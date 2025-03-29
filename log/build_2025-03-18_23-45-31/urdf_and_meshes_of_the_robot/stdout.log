@@ -1,0 +1,48 @@
+-- The C compiler identification is GNU 11.4.0
+-- The CXX compiler identification is GNU 11.4.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found ament_cmake: 1.3.11 (/opt/ros/humble/share/ament_cmake/cmake)
+-- Found Python3: /home/mickyas/miniconda3/bin/python3 (found version "3.12.9") found components: Interpreter 
+-- Override CMake install command with custom implementation using symlinks instead of copying resources
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot
+-- Install configuration: ""
+-- Execute custom install script
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/config/joint_names_URDF_AND_MESHES_OF_THE_ROBOT.yaml
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/launch/display.launch
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/launch/display.launch.py
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/launch/gazebo.launch
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/meshes/BODY_link.STL
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/meshes/Left_wheel.STL
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/meshes/Lower_left_leg.STL
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/meshes/Lower_right_link.STL
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/meshes/Right_wheel.STL
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/meshes/Upper_left_leg.STL
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/meshes/Upper_right_link.STL
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/urdf/urdf_and_meshes_of_the_robot.csv
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/urdf/urdf_and_meshes_of_the_robot.urdf
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/ament_index/resource_index/package_run_dependencies/urdf_and_meshes_of_the_robot
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/ament_index/resource_index/parent_prefix_path/urdf_and_meshes_of_the_robot
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/environment/ament_prefix_path.sh
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/environment/ament_prefix_path.dsv
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/environment/path.sh
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/environment/path.dsv
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/local_setup.bash
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/local_setup.sh
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/local_setup.zsh
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/local_setup.dsv
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/package.dsv
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/ament_index/resource_index/packages/urdf_and_meshes_of_the_robot
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/cmake/urdf_and_meshes_of_the_robotConfig.cmake
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/cmake/urdf_and_meshes_of_the_robotConfig-version.cmake
+-- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/package.xml

@@ -3,28 +3,52 @@
      Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
      For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
 <robot
-  name="urdf_and_meshes_of_the_robot">
-  <link name="base_link"/>  <!-- Dummy link added -->
+  name="urdf_and_meshes_of_the_robot" xmlns:="http://www.ros.org/wiki/xacro">
+    <!-- Define the (variable) properties of the robot  -->
+  <xacro:property name="body_mass" value="1.257"/>
+  <xacro:property name="base_width" value="0.4"/>
 
-  <joint name="base_joint" type="fixed">
-    <parent link="base_link"/>
-    <child link="BODY_link"/>
-  </joint>
+  <link name="base_link"/>  <!-- Dummy link added -->
+    <joint name="base_joint" type="fixed">
+        <parent link="base_link"/>
+        <child link="BODY_link"/>
+    </joint>
+    <link name="base_link">
+      <inertial>
+          <origin xyz="0 0 0" rpy="0 0 0"/>
+          <mass value="${body_mass}"/>
+          <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+      </inertial>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${base_width} ${base_width} ${base_width}"/>
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="${base_width} ${base_width} ${base_width}"/>
+        </geometry>
+      </collision>
+  </link>
+
+  
   <link
     name="BODY_link">
     <inertial>
       <origin
-        xyz="7.3062E-18 0.0022646 -0.021333"
+        xyz="3.89475886315245E-18 0.00226455590450399 -0.0213325485669886"
         rpy="0 0 0" />
       <mass
-        value="1.257" />
+        value="1.25696760938142" />
       <inertia
-        ixx="0.0045914"
-        ixy="1.4409E-18"
-        ixz="-1.9104E-19"
-        iyy="0.004286"
-        iyz="0.00013476"
-        izz="0.0063727" />
+        ixx="0.00459144806008682"
+        ixy="1.28011180210585E-18"
+        ixz="-1.44526315442078E-19"
+        iyy="0.00428599701114205"
+        iyz="0.000134763644709111"
+        izz="0.00637271177278172" />
     </inertial>
     <visual>
       <origin
@@ -37,7 +61,7 @@
       <material
         name="Alumuniam 1060 Alloy">
         <color
-          rgba="0.89804 0.91765 0.92941 1" />
+          rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
       </material>
     </visual>
     <collision>
@@ -46,7 +70,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/BODY_link.STL" />
+          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/BODY_link.STL"/>
       </geometry>
     </collision>
   </link>
@@ -54,17 +78,17 @@
     name="Upper_left_leg">
     <inertial>
       <origin
-        xyz="6.6396E-09 -0.10715 0.021958"
+        xyz="6.63960999375268E-09 -0.107151762967303 0.0219583761597815"
         rpy="0 0 0" />
       <mass
-        value="0.32627" />
+        value="0.326267880433695" />
       <inertia
-        ixx="0.0021991"
-        ixy="-1.3036E-10"
-        ixz="-2.948E-10"
-        iyy="4.2897E-05"
-        iyz="3.6799E-06"
-        izz="0.0022214" />
+        ixx="0.00219913941718498"
+        ixy="-1.30357956673011E-10"
+        ixz="-2.94796929689802E-10"
+        iyy="4.28972862792573E-05"
+        iyz="3.67987143722346E-06"
+        izz="0.00222143207791527" />
     </inertial>
     <visual>
       <origin
@@ -77,7 +101,7 @@
       <material
         name="Alumuniam 1060 Alloy">
         <color
-          rgba="0.29804 0.29804 0.29804 1" />
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
       </material>
     </visual>
     <collision>
@@ -112,17 +136,17 @@
     name="Lower_left_leg">
     <inertial>
       <origin
-        xyz="3.3987E-08 -0.095731 0.0075383"
+        xyz="3.39867890497558E-08 -0.0957311606849177 0.00753827162705673"
         rpy="0 0 0" />
       <mass
-        value="0.20779" />
+        value="0.207785515280573" />
       <inertia
-        ixx="0.0010103"
-        ixy="7.9033E-11"
-        ixz="1.1732E-10"
-        iyy="1.2421E-05"
-        iyz="7.5525E-07"
-        izz="0.0010151" />
+        ixx="0.00101034780209657"
+        ixy="7.90326047086469E-11"
+        ixz="1.17321901864196E-10"
+        iyy="1.24208318954115E-05"
+        iyz="7.55245344605408E-07"
+        izz="0.00101513713877025" />
     </inertial>
     <visual>
       <origin
@@ -135,7 +159,7 @@
       <material
         name="Alumuniam 1060 Alloy">
         <color
-          rgba="0.29804 0.29804 0.29804 1" />
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
       </material>
     </visual>
     <collision>
@@ -152,8 +176,8 @@
     name="Lower_left_joint"
     type="revolute">
     <origin
-      xyz="0 -0.24941 0.032"
-      rpy="0 0 -1.2888" />
+      xyz="0 -0.249405485752651 0.0320000000000001"
+      rpy="0 0 -1.28878084327767" />
     <parent
       link="Upper_left_leg" />
     <child
@@ -170,17 +194,17 @@
     name="Left_wheel">
     <inertial>
       <origin
-        xyz="7.526E-08 -9.4982E-08 -0.021914"
+        xyz="7.52603486406378E-08 -9.49818154127868E-08 -0.0219139228933359"
         rpy="0 0 0" />
       <mass
-        value="0.12382" />
+        value="0.12381676672555" />
       <inertia
-        ixx="0.00019918"
-        ixy="-2.4608E-10"
-        ixz="-2.7634E-11"
-        iyy="0.00019918"
-        iyz="4.4186E-11"
-        izz="0.0003757" />
+        ixx="0.000199178754527492"
+        ixy="-2.46079676848341E-10"
+        ixz="-2.76339310785722E-11"
+        iyy="0.000199177986364872"
+        iyz="4.41855846610336E-11"
+        izz="0.000375698673183174" />
     </inertial>
     <visual>
       <origin
@@ -193,7 +217,7 @@
       <material
         name="Rubber">
         <color
-          rgba="0.29804 0.29804 0.29804 1" />
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
       </material>
     </visual>
     <collision>
@@ -210,8 +234,8 @@
     name="Left_joint"
     type="continuous">
     <origin
-      xyz="0 -0.22885 0.015"
-      rpy="3.1416 0 0.81783" />
+      xyz="0 -0.228846762208739 0.0149999999999999"
+      rpy="3.14159265358979 0 0.817827802546135" />
     <parent
       link="Lower_left_leg" />
     <child
@@ -228,17 +252,17 @@
     name="Upper_right_link">
     <inertial>
       <origin
-        xyz="9.6623E-09 -0.10715 0.021958"
+        xyz="9.66232557159108E-09 -0.107151739089504 0.021958362495638"
         rpy="0 0 0" />
       <mass
-        value="0.32627" />
+        value="0.326267809856433" />
       <inertia
-        ixx="0.0021991"
-        ixy="-1.7623E-10"
-        ixz="-2.9281E-10"
-        iyy="4.2897E-05"
-        iyz="3.6798E-06"
-        izz="0.0022214" />
+        ixx="0.00219913849785295"
+        ixy="-1.7623127181571E-10"
+        ixz="-2.92814858838259E-10"
+        iyy="4.28972891732612E-05"
+        iyz="3.67976729089962E-06"
+        izz="0.00222143115898891" />
     </inertial>
     <visual>
       <origin
@@ -251,7 +275,7 @@
       <material
         name="Alumuniam 1060 Alloy">
         <color
-          rgba="0.29804 0.29804 0.29804 1" />
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
       </material>
     </visual>
     <collision>
@@ -268,8 +292,8 @@
     name="Upper_right_joint"
     type="revolute">
     <origin
-      xyz="-0.065 -0.0025 -0.055"
-      rpy="1.5708 0.59611 -1.5708" />
+      xyz="-0.065 -0.00249999999999983 -0.0550000000000003"
+      rpy="1.5707963267949 0.596112380759406 -1.5707963267949" />
     <parent
       link="BODY_link" />
     <child
@@ -286,17 +310,17 @@
     name="Lower_right_link">
     <inertial>
       <origin
-        xyz="3.29E-08 -0.095731 0.0075383"
+        xyz="3.28998939203018E-08 -0.0957311606830768 0.00753826691292905"
         rpy="0 0 0" />
       <mass
-        value="0.20779" />
+        value="0.207785515300468" />
       <inertia
-        ixx="0.0010103"
-        ixy="8.8706E-11"
-        ixz="1.1747E-10"
-        iyy="1.2421E-05"
-        iyz="7.5523E-07"
-        izz="0.0010151" />
+        ixx="0.00101034780025723"
+        ixy="8.87059390832042E-11"
+        ixz="1.17474000059E-10"
+        iyy="1.24208276844525E-05"
+        iyz="7.55226136782335E-07"
+        izz="0.00101513713648396" />
     </inertial>
     <visual>
       <origin
@@ -309,7 +333,7 @@
       <material
         name="Alumuniam 1060 Alloy">
         <color
-          rgba="0.29804 0.29804 0.29804 1" />
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
       </material>
     </visual>
     <collision>
@@ -326,8 +350,8 @@
     name="Lower_right_joint"
     type="revolute">
     <origin
-      xyz="0 -0.24941 0.034"
-      rpy="0 0 1.3094" />
+      xyz="0 -0.249405485752651 0.0340000000000001"
+      rpy="0 0 1.30937632751323" />
     <parent
       link="Upper_right_link" />
     <child
@@ -344,17 +368,17 @@
     name="Right_wheel">
     <inertial>
       <origin
-        xyz="2.9114E-08 -9.5306E-09 -0.021914"
+        xyz="2.91143137376437E-08 -9.53058393315942E-09 -0.0219139208202874"
         rpy="0 0 0" />
       <mass
-        value="0.12382" />
+        value="0.123817128369023" />
       <inertia
-        ixx="0.00019918"
-        ixy="-2.1966E-10"
-        ixz="-1.9165E-11"
-        iyy="0.00019918"
-        iyz="2.7688E-11"
-        izz="0.0003757" />
+        ixx="0.000199179150528436"
+        ixy="-2.19663803565208E-10"
+        ixz="-1.91649692053848E-11"
+        iyy="0.000199178188016874"
+        iyz="2.7688061588222E-11"
+        izz="0.00037569927326704" />
     </inertial>
     <visual>
       <origin
@@ -367,7 +391,7 @@
       <material
         name="Rubber ">
         <color
-          rgba="0.29804 0.29804 0.29804 1" />
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
       </material>
     </visual>
     <collision>
@@ -384,13 +408,172 @@
     name="Right_joint"
     type="continuous">
     <origin
-      xyz="0 -0.22885 0.015"
-      rpy="3.1416 0 0.41886" />
+      xyz="0 -0.228846762208739 0.015"
+      rpy="3.14159265358979 0 0.418857535497935" />
     <parent
       link="Lower_right_link" />
     <child
       link="Right_wheel" />
     <axis
       xyz="0 0 1" />
+  </joint>
+  <link
+    name="lidar_link">
+    <inertial>
+      <origin
+        xyz="-0.00748253542434936 0.0106650182159227 9.18484888063789E-05"
+        rpy="0 0 0" />
+      <mass
+        value="0.023982866275303" />
+      <inertia
+        ixx="2.99648036688873E-06"
+        ixy="7.71082922354325E-07"
+        ixz="3.90085076397272E-09"
+        iyy="5.35270613804163E-06"
+        iyz="1.5091352201716E-08"
+        izz="4.68185693441384E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/lidar_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/lidar_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="lidar_joint"
+    type="fixed">
+    <origin
+      xyz="0.0118364652961996 4.41245333220815E-05 0.0326712986882367"
+      rpy="1.5707963267949 0 0" />
+    <parent
+      link="BODY_link" />
+    <child
+      link="lidar_link" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="camera_link">
+    <inertial>
+      <origin
+        xyz="-1.00991565614951E-09 0.000394686414877599 0.00613911034094791"
+        rpy="0 0 0" />
+      <mass
+        value="0.00182332100343475" />
+      <inertia
+        ixx="4.92416087597433E-08"
+        ixy="1.34622570853428E-15"
+        ixz="-2.02896607135891E-15"
+        iyy="4.93405437288816E-08"
+        iyz="3.4862884852944E-09"
+        izz="4.40227961832514E-08" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/amera_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/camera_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="camera_joint"
+    type="fixed">
+    <origin
+      xyz="0 -0.0868463319293926 0.00105377166734255"
+      rpy="1.74532925199432 0 0" />
+    <parent
+      link="BODY_link" />
+    <child
+      link="camera_link" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="IMU_link">
+    <inertial>
+      <origin
+        xyz="3.83749968898417E-06 0.00114501984172181 -0.000169625278521169"
+        rpy="0 0 0" />
+      <mass
+        value="0.00107255708196703" />
+      <inertia
+        ixx="3.33321450865841E-08"
+        ixy="-7.41397232762258E-12"
+        ixz="3.16411212611588E-10"
+        iyy="8.73841360657296E-08"
+        iyz="3.39318638686155E-10"
+        izz="5.53349807702084E-08" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/IMU_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.298039215686275 0.298039215686275 0.298039215686275 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/IMU_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="IMU_joint"
+    type="fixed">
+    <origin
+      xyz="0 0 0.025"
+      rpy="1.5708 0 0" />
+    <parent
+      link="BODY_link" />
+    <child
+      link="IMU_link" />
+    <axis
+      xyz="0 0 0" />
   </joint>
 </robot>

@@ -1,0 +1,1 @@
+roslaunch;robot_state_publisher;rviz;joint_state_publisher_gui;gazebo

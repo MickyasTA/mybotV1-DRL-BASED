@@ -1,0 +1,54 @@
+[0.009s] Invoking command in '/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot': CONDA_PROMPT_MODIFIER=(base) /usr/bin/cmake /home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot
+[0.060s] -- The C compiler identification is GNU 11.4.0
+[0.122s] -- The CXX compiler identification is GNU 11.4.0
+[0.130s] -- Detecting C compiler ABI info
+[0.214s] -- Detecting C compiler ABI info - done
+[0.222s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.222s] -- Detecting C compile features
+[0.223s] -- Detecting C compile features - done
+[0.226s] -- Detecting CXX compiler ABI info
+[0.305s] -- Detecting CXX compiler ABI info - done
+[0.313s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.314s] -- Detecting CXX compile features
+[0.314s] -- Detecting CXX compile features - done
+[0.316s] -- Found ament_cmake: 1.3.11 (/opt/ros/humble/share/ament_cmake/cmake)
+[0.641s] -- Found Python3: /home/mickyas/miniconda3/bin/python3 (found version "3.12.9") found components: Interpreter 
+[0.707s] -- Override CMake install command with custom implementation using symlinks instead of copying resources
+[0.817s] -- Configuring done
+[0.819s] -- Generating done
+[0.821s] -- Build files have been written to: /home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot
+[0.828s] Invoked command in '/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot' returned '0': CONDA_PROMPT_MODIFIER=(base) /usr/bin/cmake /home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot -DAMENT_CMAKE_SYMLINK_INSTALL=1 -DCMAKE_INSTALL_PREFIX=/home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot
+[0.829s] Invoking command in '/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot': CONDA_PROMPT_MODIFIER=(base) /usr/bin/cmake --build /home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot -- -j16 -l16
+[0.864s] Invoked command in '/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot' returned '0': CONDA_PROMPT_MODIFIER=(base) /usr/bin/cmake --build /home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot -- -j16 -l16
+[0.874s] Invoking command in '/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot': CONDA_PROMPT_MODIFIER=(base) /usr/bin/cmake --install /home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot
+[0.881s] -- Install configuration: ""
+[0.881s] -- Execute custom install script
+[0.882s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/config/joint_names_URDF_AND_MESHES_OF_THE_ROBOT.yaml
+[0.892s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/launch/display.launch
+[0.904s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/launch/display.launch.py
+[0.916s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/launch/gazebo.launch
+[0.927s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/meshes/BODY_link.STL
+[0.935s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/meshes/Left_wheel.STL
+[0.943s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/meshes/Lower_left_leg.STL
+[0.952s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/meshes/Lower_right_link.STL
+[0.961s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/meshes/Right_wheel.STL
+[0.969s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/meshes/Upper_left_leg.STL
+[0.977s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/meshes/Upper_right_link.STL
+[0.985s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/urdf/urdf_and_meshes_of_the_robot.csv
+[0.991s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/urdf/urdf_and_meshes_of_the_robot.urdf
+[0.998s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/ament_index/resource_index/package_run_dependencies/urdf_and_meshes_of_the_robot
+[1.004s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/ament_index/resource_index/parent_prefix_path/urdf_and_meshes_of_the_robot
+[1.011s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/environment/ament_prefix_path.sh
+[1.017s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/environment/ament_prefix_path.dsv
+[1.023s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/environment/path.sh
+[1.029s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/environment/path.dsv
+[1.036s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/local_setup.bash
+[1.043s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/local_setup.sh
+[1.049s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/local_setup.zsh
+[1.056s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/local_setup.dsv
+[1.062s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/package.dsv
+[1.068s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/ament_index/resource_index/packages/urdf_and_meshes_of_the_robot
+[1.074s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/cmake/urdf_and_meshes_of_the_robotConfig.cmake
+[1.080s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/cmake/urdf_and_meshes_of_the_robotConfig-version.cmake
+[1.086s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/package.xml
+[1.095s] Invoked command in '/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot' returned '0': CONDA_PROMPT_MODIFIER=(base) /usr/bin/cmake --install /home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot
