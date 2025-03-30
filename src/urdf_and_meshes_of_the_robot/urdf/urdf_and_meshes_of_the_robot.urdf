@@ -105,10 +105,10 @@
     <axis
       xyz="0 0 -1" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-1.57"
+      upper="1.57"
+      effort="5"
+      velocity="1" />
   </joint>
   <link
     name="Lower_left_leg">
@@ -163,10 +163,10 @@
     <axis
       xyz="0 0 1" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-1.57"
+      upper="1.57"
+      effort="5"
+      velocity="1" />
   </joint>
   <link
     name="Left_wheel">
@@ -221,10 +221,10 @@
     <axis
       xyz="0 0 1" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-1.57"
+      upper="1.57"
+      effort="5"
+      velocity="1" />
   </joint>
   <link
     name="Upper_right_link">
@@ -279,10 +279,10 @@
     <axis
       xyz="0 0 1" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-1.57"
+      upper="1.57"
+      effort="5"
+      velocity="1" />
   </joint>
   <link
     name="Lower_right_link">
@@ -337,10 +337,10 @@
     <axis
       xyz="0 0 1" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-1.57"
+      upper="1.57"
+      effort="5"
+      velocity="1" />
   </joint>
   <link
     name="Right_wheel">
@@ -556,4 +556,94 @@
     <axis
       xyz="0 0 0" />
   </joint>
+
+
+      <!-- Gazebo sensor plugins -->
+
+    <!-- <gazebo>
+      <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so"/>
+    </gazebo> -->
+
+    <gazebo>
+      <plugin name="gazebo_ros" filename="libgazebo_ros_factory.so"/>
+    </gazebo>
+
+    <!-- IMU sensor plugin -->
+    <gazebo reference="IMU_link">
+      <sensor name="imu_sensor" type="imu">
+        <always_on>true</always_on>
+        <update_rate>100.0</update_rate>
+        <visualize>true</visualize>
+        <imu>
+          <topic>imu</topic>
+        </imu>
+        <plugin name="imu_plugin" filename="libgazebo_ros_imu_sensor.so">
+          <ros>
+            <namespace>/</namespace>
+          </ros>
+          <frame_name>IMU_link</frame_name>
+        </plugin>
+      </sensor>
+    </gazebo>
+
+    <!-- Camera plugin -->
+    <gazebo reference="camera_link">
+      <sensor name="camera_sensor" type="camera">
+        <always_on>true</always_on>
+        <update_rate>30.0</update_rate>
+        <camera>
+          <horizontal_fov>1.3962634</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>100</far>
+          </clip>
+        </camera>
+        <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+          <cameraName>camera</cameraName>
+          <imageTopicName>image_raw</imageTopicName>
+          <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+          <frameName>camera_link</frameName>
+        </plugin>
+      </sensor>
+    </gazebo>
+
+    <!-- Lidar plugin -->
+    <gazebo reference="lidar_link">
+      <sensor type="ray" name="laser">
+        <pose>0 0 0 0 0 0</pose>
+        <ray>
+          <scan>
+            <horizontal>
+              <samples>720</samples>
+              <resolution>1</resolution>
+              <min_angle>-1.5708</min_angle>
+              <max_angle>1.5708</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.1</min>
+            <max>10.0</max>
+            <resolution>0.01</resolution>
+          </range>
+        </ray>
+
+        <plugin name="gazebo_ros_laser_controller" filename="libgazebo_ros_ray_sensor.so">
+          <topicName>/scan</topicName>
+          <frameName>lidar_link</frameName>
+        </plugin>
+        
+      </sensor>
+    </gazebo>
+
+
+    <!-- Joint state plugin for encoders (wheel rotation) -->
+    <gazebo>
+      <plugin name="joint_state_publisher" filename="libgazebo_ros_joint_state_publisher.so"/>
+    </gazebo>
+
 </robot>
