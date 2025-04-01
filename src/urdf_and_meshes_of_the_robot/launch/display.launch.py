@@ -8,13 +8,20 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import ExecuteProcess
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.actions import IncludeLaunchDescription
 
 def generate_launch_description():
+    # Get the package directory
+    pkg_dir = get_package_share_directory('urdf_and_meshes_of_the_robot')
+    # Get the path to the urdf file
     urdf_file_name = 'urdf_and_meshes_of_the_robot.urdf'
     urdf = os.path.join(
         get_package_share_directory('urdf_and_meshes_of_the_robot'),
         'urdf',
         urdf_file_name)
+    # RViz configuration
+    rviz_config = os.path.join(pkg_dir, 'config', 'urdf.rviz')
 
     return launch.LaunchDescription([
         launch_ros.actions.Node(
@@ -38,9 +45,24 @@ def generate_launch_description():
                 get_package_share_directory('urdf_and_meshes_of_the_robot'), 'config', 'urdf.rviz')]
         ),
         # Gazebo simulation of the robot model with the urdf file and meshes 
-        ExecuteProcess(
-            cmd=['/usr/bin/gazebo', '--verbose', '-s', 'libgazebo_ros_factory.so'],
-            output='screen'),
+        # ExecuteProcess(
+        #     cmd=['/usr/bin/gazebo', '--verbose', '-s', 'libgazebo_ros_factory.so'],
+        #     output='screen'),
+        
+        # The above ExecuteProcess is replaced with the IncludeLaunchDescription
+        # to include the gazebo launch file from the gazebo_ros package.
+        # The gazebo launch file is used to launch the gazebo simulation with the robot model.
+        # Replace the ExecuteProcess call with:
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([
+                os.path.join(get_package_share_directory('gazebo_ros'), 
+                            'launch', 'gazebo.launch.py')
+            ]),
+            launch_arguments={
+                #'world': 'false',  # Empty world
+                'verbose': 'true'
+            }.items()
+        ),
 
         Node(
             package='gazebo_ros',

@@ -1,4 +1,5 @@
 <!-- <?xml version="1.0"> -->
+
 <!-- <?xml version="1.0" encoding="utf-8"?> -->
 <!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
      Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
@@ -559,11 +560,6 @@
 
 
       <!-- Gazebo sensor plugins -->
-
-    <!-- <gazebo>
-      <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so"/>
-    </gazebo> -->
-
     <gazebo>
       <plugin name="gazebo_ros" filename="libgazebo_ros_factory.so"/>
     </gazebo>
@@ -575,7 +571,7 @@
         <update_rate>100.0</update_rate>
         <visualize>true</visualize>
         <imu>
-          <topic>imu</topic>
+          <topic>/imu</topic>
         </imu>
         <plugin name="imu_plugin" filename="libgazebo_ros_imu_sensor.so">
           <ros>
@@ -631,19 +627,64 @@
             <resolution>0.01</resolution>
           </range>
         </ray>
-
         <plugin name="gazebo_ros_laser_controller" filename="libgazebo_ros_ray_sensor.so">
-          <topicName>/scan</topicName>
-          <frameName>lidar_link</frameName>
+          <frame_name>lidar_link</frame_name>
+          <topic_name>/scan</topic_name>
+          <output_type>sensor_msgs/LaserScan</output_type>
         </plugin>
-        
       </sensor>
     </gazebo>
 
-
     <!-- Joint state plugin for encoders (wheel rotation) -->
     <gazebo>
-      <plugin name="joint_state_publisher" filename="libgazebo_ros_joint_state_publisher.so"/>
+      <plugin name="joint_state_publisher" filename="libgazebo_ros_joint_state_publisher.so">
+        <joint_name>Upper_left_joint</joint_name>
+        <joint_name>Lower_left_joint</joint_name>
+        <joint_name>Left_joint</joint_name>
+        <joint_name>Upper_right_joint</joint_name>
+        <joint_name>Lower_right_joint</joint_name>
+        <joint_name>Right_joint</joint_name>
+        <update_rate>50.0</update_rate>
+
+      </plugin>
     </gazebo>
 
+    
+      <!-- Differential drive plugin 
+      
+      <left_wheel_joint> and <right_wheel_joint>: These tags point to the existing revolute joints for the left and right wheels in your robot’s URDF.
+      <wheel_separation>: The distance between the left and right wheels (in meters).
+      <wheel_radius>: The radius of the wheels (in meters).
+      <odometry_frame>: The reference frame used for odometry. It’s common to use the odom frame for this.
+      <odom_topic>: The topic where the odometry information will be published (e.g., /odom).
+      <cmd_vel_topic>: The topic where velocity commands (linear and angular) will be published to control the robot’s motion.
+      To control the robot, you will send commands to the /cmd_vel topic, typically in the form of geometry_msgs/Twist messages, which contain linear and angular velocities.
+      -->
+    <gazebo>
+      <plugin name="gazebo_ros_diff_drive" filename="libgazebo_ros_diff_drive.so">
+        <!-- Left and right wheel joints -->
+        <left_wheel_joint>Left_joint</left_wheel_joint>
+        <right_wheel_joint>Right_joint</right_wheel_joint>
+
+        <!-- Wheel radius and separation between wheels -->
+        <wheel_separation>0.2</wheel_separation>
+        <wheel_radius>0.05</wheel_radius>
+
+        <!-- Update rate for the plugin -->
+        <update_rate>50.0</update_rate>
+
+        <!-- Odometry frame name -->
+        <odometry_frame>odom</odometry_frame>
+        <!-- Optional: set the robot's base frame -->
+        <base_frame>base_link</base_frame>
+
+        <!-- Provide the wheel velocities and odometry data -->
+        <publish_rate>30.0</publish_rate>
+
+        <!-- Odometry topic -->
+        <odom_topic>/odom</odom_topic>
+        <!-- Optional: set the topic for controlling the robot -->
+        <cmd_vel_topic>/cmd_vel</cmd_vel_topic>
+      </plugin>
+    </gazebo>
 </robot>
