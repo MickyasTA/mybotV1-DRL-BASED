@@ -210,7 +210,7 @@
     </collision>
   </link>
   <joint
-    name="Left_joint"
+    name="left_joint"
     type="continuous">
     <origin
       xyz="0 -0.22885 0.015"
@@ -384,7 +384,7 @@
     </collision>
   </link>
   <joint
-    name="Right_joint"
+    name="right_joint"
     type="continuous">
     <origin
       xyz="0 -0.22885 0.015"
@@ -561,32 +561,38 @@
 
       <!-- Gazebo sensor plugins -->
     <gazebo>
-      <plugin name="gazebo_ros" filename="libgazebo_ros_factory.so"/>
+      <plugin name="gazebo_ros_factory" filename="libgazebo_ros_factory.so"/>
     </gazebo>
 
     <!-- IMU sensor plugin -->
     <gazebo reference="IMU_link">
-      <sensor name="imu_sensor" type="imu">
-        <always_on>true</always_on>
-        <update_rate>100.0</update_rate>
-        <visualize>true</visualize>
-        <imu>
-          <topic>/imu</topic>
-        </imu>
-        <plugin name="imu_plugin" filename="libgazebo_ros_imu_sensor.so">
-          <ros>
-            <namespace>/</namespace>
-          </ros>
-          <frame_name>IMU_link</frame_name>
-        </plugin>
-      </sensor>
-    </gazebo>
+      <plugin name="imu_plugin" filename="libgazebo_ros_imu_sensor.so">
+          <sensor name="imu_sensor" type="imu">
+              <always_on>1</always_on>
+              <update_rate>100.0</update_rate>
+              <visualize>true</visualize>
+              <imu>
+                  <noise>
+                      <angular_velocity>0.01</angular_velocity>
+                      <linear_acceleration>0.02</linear_acceleration>
+                  </noise>
+                  <topic>/imu</topic>
+              </imu>
+          </sensor>
+      </plugin>
+    </gazebo> 
 
     <!-- Camera plugin -->
     <gazebo reference="camera_link">
       <sensor name="camera_sensor" type="camera">
         <always_on>true</always_on>
         <update_rate>30.0</update_rate>
+        <visualize>true</visualize>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.007</stddev>
+        </noise>
         <camera>
           <horizontal_fov>1.3962634</horizontal_fov>
           <image>
@@ -640,10 +646,10 @@
       <plugin name="joint_state_publisher" filename="libgazebo_ros_joint_state_publisher.so">
         <joint_name>Upper_left_joint</joint_name>
         <joint_name>Lower_left_joint</joint_name>
-        <joint_name>Left_joint</joint_name>
+        <joint_name>left_joint</joint_name>
         <joint_name>Upper_right_joint</joint_name>
         <joint_name>Lower_right_joint</joint_name>
-        <joint_name>Right_joint</joint_name>
+        <joint_name>right_joint</joint_name>
         <update_rate>50.0</update_rate>
 
       </plugin>
@@ -663,8 +669,8 @@
     <gazebo>
       <plugin name="gazebo_ros_diff_drive" filename="libgazebo_ros_diff_drive.so">
         <!-- Left and right wheel joints -->
-        <left_wheel_joint>Left_joint</left_wheel_joint>
-        <right_wheel_joint>Right_joint</right_wheel_joint>
+        <left_wheel_joint>left_joint</left_wheel_joint>
+        <right_wheel_joint>right_joint</right_wheel_joint>
 
         <!-- Wheel radius and separation between wheels -->
         <wheel_separation>0.226</wheel_separation>
