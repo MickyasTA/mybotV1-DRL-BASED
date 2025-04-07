@@ -667,9 +667,9 @@
         <right_wheel_joint>Right_joint</right_wheel_joint>
 
         <!-- Wheel radius and separation between wheels -->
-        <wheel_separation>0.2</wheel_separation>
-        <wheel_radius>0.05</wheel_radius>
-
+        <wheel_separation>0.226</wheel_separation>
+        <wheel_radius>0.08255</wheel_radius>
+  
         <!-- Update rate for the plugin -->
         <update_rate>50.0</update_rate>
 

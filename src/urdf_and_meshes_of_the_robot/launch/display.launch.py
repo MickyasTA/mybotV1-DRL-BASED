@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Description: This file is used to launch the robot_state_publisher, joint_state_publisher_gui and rviz2 to display the robot model in RViz2.
 #              The robot model is loaded from the urdf file located in the urdf folder of the urdf_and_meshes_of_the_robot package.
 #              The RViz2 configuration file is located in the config folder of the urdf_and_meshes_of_the_robot package.
@@ -37,6 +38,7 @@ def generate_launch_description():
             executable='joint_state_publisher_gui',
             output='screen'
         ) if os.environ.get('DISPLAY') else None,
+        
         launch_ros.actions.Node(
             package='rviz2',
             executable='rviz2',
@@ -53,6 +55,8 @@ def generate_launch_description():
         # to include the gazebo launch file from the gazebo_ros package.
         # The gazebo launch file is used to launch the gazebo simulation with the robot model.
         # Replace the ExecuteProcess call with:
+
+        # Include the Gazebo launch file
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource([
                 os.path.join(get_package_share_directory('gazebo_ros'), 
@@ -64,12 +68,22 @@ def generate_launch_description():
             }.items()
         ),
 
+        # Node to spawn the robot model in Gazebo
         Node(
             package='gazebo_ros',
             executable='/usr/bin/python3',  # Force system Python
             arguments=['/opt/ros/humble/lib/gazebo_ros/spawn_entity.py', 
                     '-entity', 'urdf_and_meshes_of_the_robot', 
                     '-file', urdf, '-x', '0', '-y', '0', '-z', '0.5'],
+            output='screen'
+        ),
+        # Node to control the robot model
+        # The robot model is controlled by the robot_nodes_control.py file
+        # The robot_nodes_control.py file is used to control the robot model
+        Node(
+            package='urdf_and_meshes_of_the_robot',
+            executable='robot_nodes_control.py',
+            name='robot_control_node',
             output='screen'
         ),
 
