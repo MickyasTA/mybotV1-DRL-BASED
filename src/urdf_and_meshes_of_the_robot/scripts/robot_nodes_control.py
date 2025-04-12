@@ -4,7 +4,10 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState, Image
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan, Imu
-from std_msgs.msg import Float64
+from std_msgs.msg import Float64, Float32MultiArray
+import numpy as np
+import threading # used in the callback functions to avoid blocking the main thread( or the main loop)
+import time
 
 class RobotControlNode(Node):
     def __init__(self):
@@ -12,6 +15,22 @@ class RobotControlNode(Node):
         
         # Initialize joint positions dictionary
         self.joint_positions = {}
+        self.joint_veleocities = {}
+
+        # Initialize sensor data storage
+        self.imu_data = None
+        self.camera_data = None
+        self.laser_data = None
+
+        # Robot state tracking 
+        self.robot_height = 0.0
+        self.robot_orentation = [0.0, 0.0, 0.0, 0.0] # Quaternion orientation
+        self.robot_linear_accel = [0.0, 0.0, 0.0] # Linear acceleration
+        self.robot_angular_vel = [0.0, 0.0, 0.0] # Angular acceleration
+        self.is_fallen = False
+
+        # Lock for thread safety access to state variables
+        self.state_lock = threading.Lock() # used to protect the shared state variables from concurrent access by multiple threads 
 
         # Subscribers to receive sensor data
         self.joint_state_sub = self.create_subscription(
@@ -45,79 +64,85 @@ class RobotControlNode(Node):
         # Publisher to send commands to the wheels (for movement)
         self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
 
+        # Publisher for joint control 
+        # using effort controllers for the leg joints
+        self.upper_left_pub = self.create_publisher(Float64, '/Upper_left_joint_effort_controller/command', 10)
+        self.upper_right_pub = self.create_publisher(Float64, '/Upper_right_joint_effort_controller/command', 10)
+        self.lower_left_pub = self.create_publisher(Float64, '/Lower_left_joint_effort_controller/command', 10)
+        self.lower_right_pub = self.create_publisher(Float64, '/Lower_right_joint_effort_controller/command', 10)
+
+        # Publisher for wheel joints (using position controllers)
+        self.left_wheel_pub = self.create_publisher(Float64, '/Left_joint_position_controller/command', 10)
+        self.right_wheel_pub = self.create_publisher(Float64, '/Right_joint_position_controller/command', 10)
+
         # Publisher to control specific joints
         self.joint_cmd_pub = self.create_publisher(JointState, '/joint_trajectory_controller/command', 10)
 
+        # Timer to periodically publish commands for checking the robot state
+        self.timer = self.create_timer(0.1, self.check_robot_state)  # Check every 0.1 seconds
+        
+        self.get_logger().info("Robot Control Node Initialized")
+
     # Callback for joint states (wheel and leg joints)
     def joint_state_callback(self, msg):
-        self.get_logger().info(f"Joint States Received: {msg.name}")
-        for i, name in enumerate(msg.name):
-            self.joint_positions[name] = {
-                'position': msg.position[i],
-                'velocity': msg.velocity[i]
-            }
-            self.get_logger().info(f"{name} position: {msg.position[i]}, velocity: {msg.velocity[i]}")
-            # Get the position of the wheel joints for each joint and set it on a variable 
-            if name == "Upper_left_joint":
-                Upper_left_joint_pos = msg.position[i]
-                Upper_left_joint_vel = msg.velocity[i]
-                self.get_logger().info(f"Wheel joint position: {Upper_left_joint_pos}")
-                self.get_logger().info(f"Wheel joint velocity: {Upper_left_joint_vel}")
-            if name == "Upper_right_joint":
-                Upper_right_joint_pos = msg.position[i]
-                Upper_right_joint_vel = msg.velocity[i]
-                self.get_logger().info(f"Wheel joint position: {Upper_right_joint_pos}")
-                self.get_logger().info(f"Wheel joint velocity: {Upper_right_joint_vel}")
-            if name == "Lower_left_joint":
-                Lower_left_joint_pos = msg.position[i]
-                Lower_left_joint_vel = msg.velocity[i]
-                self.get_logger().info(f"Wheel joint position: {Lower_left_joint_pos}")
-                self.get_logger().info(f"Wheel joint velocity: {Lower_left_joint_vel}")
-            if name == "Lower_right_joint":
-                Lower_right_joint_pos = msg.position[i]
-                Lower_right_joint_vel = msg.velocity[i]
-                self.get_logger().info(f"Wheel joint position: {Lower_right_joint_pos}")
-                self.get_logger().info(f"Wheel joint velocity: {Lower_right_joint_vel}")
-            if name == "Left_joint":
-                Left_wheel_pos = msg.position[i]
-                Left_wheel_vel = msg.velocity[i]
-                self.get_logger().info(f"Wheel joint position: {Left_wheel_pos}")
-                self.get_logger().info(f"Wheel joint velocity: {Left_wheel_vel}")
-            if name == "Right_joint":
-                Right_wheel_pos = msg.position[i]
-                Right_wheel_vel = msg.velocity[i]
-                self.get_logger().info(f"Wheel joint position: {Right_wheel_pos}")
-                self.get_logger().info(f"Wheel joint velocity: {Right_wheel_vel}")
+        with self.state_lock:
+            self.get_logger().info(f"Joint States Received: {msg.name}")
+            for i, name in enumerate(msg.name):
+                position = msg.position[i] if i < len(msg.position) else 0.0
+                velocity = msg.velocity[i] if i < len(msg.velocity) else 0.0
+                # Store joint positions and velocities in a dictionary
+                self.joint_positions[name] = {
+                    'position': position,
+                    'velocity': velocity
+                }
+                # Log the joint states ( reduced to debug level to avoide console spamming)
+                self.get_logger().debug(f"{name} position: {position}, velocity: {velocity}")
 
+                
     # Callback for IMU data
     def imu_callback(self, msg):
-        Imu_orientation = msg.orientation
-        Imu_linear_acceleration = msg.linear_acceleration
-        self.get_logger().info(f"IMU data received: Orientation: {Imu_orientation}, Linear Accel: {Imu_linear_acceleration}")
-
+        with self.state_lock:
+            self.imu_data = msg
+            self.robot_orentation = [
+                msg.orientation.x,
+                msg.orientation.y,
+                msg.orientation.z,
+                msg.orientation.w
+            ]
+            self.robot_linear_accel = [
+                msg.linear_acceleration.x,
+                msg.linear_acceleration.y,
+                msg.linear_acceleration.z
+            ]
+            self.robot_angular_vel = [
+                msg.angular_velocity.x,
+                msg.angular_velocity.y,
+                msg.angular_velocity.z
+            ]
+            # Check if the robot is fallen based on IMU data
+            # A simple check : if the robot is tilted too much, consider it fallen
+            # This can be improved with more sophisticated logic
+            roll, pitch, yaw = self.euler_from_quaternion(self.robot_orentation)
+            if abs(roll) > 0.5 or abs(pitch) > 0.5:  # (Radians) Adjust threshold as needed
+                self.is_fallen = True
+            else:
+                self.is_fallen = False
+            self.get_logger().debug(f"IMU Data: Orientation: {self.robot_orentation}, Linear Accel: {self.robot_linear_accel}, Angular Vel: {self.robot_angular_vel}")
+            self.get_logger().debug(f"Robot is {'fallen' if self.is_fallen else 'upright'}")
+    
     # Callback for camera data
     def camera_callback(self, msg):
-        Image_width = msg.width
-        Image_height = msg.height
-        Image_encoding = msg.encoding
-        Image_data = msg.data
-        self.get_logger().info(f"Camera data received: Width: {Image_width}, Height: {Image_height}, Encoding: {Image_encoding}")
-        self.get_logger().info(f"Camera data received: {len(Image_data)} bytes of image data")
-
+        with self.state_lock:
+            self.camera_data = msg
+            self.get_logger().debug(f"Camera Data Received: {len(msg.data)} bytes")
+            # Process camera data (e.g., convert to numpy array) on latter stage of the project
+    
     # Callback for laser scan data
     def laser_callback(self, msg):
-        LaserScan_ranges = msg.ranges
-        LaserScan_angle_min = msg.angle_min
-        LaserScan_angle_max = msg.angle_max
-        LaserScan_angle_increment = msg.angle_increment
-        LaserScan_time_increment = msg.time_increment
-        LaserScan_range_min = msg.range_min
-        LaserScan_range_max = msg.range_max
-        self.get_logger().info(f"Laser Scan data received: Angle Min: {LaserScan_angle_min}, Angle Max: {LaserScan_angle_max}")
-        self.get_logger().info(f"Laser Scan data received: Angle Increment: {LaserScan_angle_increment}, Time Increment: {LaserScan_time_increment}")
-        self.get_logger().info(f"Laser Scan data received: Range Min: {LaserScan_range_min}, Range Max: {LaserScan_range_max}")
-        self.get_logger().info(f"Laser Scan data received: {len(LaserScan_ranges)} ranges")
-
+        with self.state_lock:
+            self.laser_data = msg
+            self.get_logger().debug(f"Laser Scan Data Received: {len(msg.ranges)} ranges")
+       
     # Publish movement command to the robot (e.g., for wheels)
     def publish_cmd(self, linear_x, angular_z):
         cmd = Twist()
@@ -127,15 +152,151 @@ class RobotControlNode(Node):
         self.get_logger().info(f"Publishing CMD: linear_x={linear_x}, angular_z={angular_z}")
 
     # Publish joint commands (e.g., to control the legs or arms)
-    def publish_joint_command(self, joint_name, joint_position):
-        joint_state = JointState()
-        joint_state.name = [joint_name]
-        joint_state.position = [joint_position]
-        joint_state.velocity = [0.0]  # Not needed in this example, but can be added if necessary
-        joint_state.effort = [0.0]    # Not needed in this example, but can be added if necessary
+    def publish_joint_command(self, joint_name, value,
+     command_type='position'):
+        """
+        Publish command to a specific joint
+        
+        Args:
+            joint_name: Name of the joint to control
+            value: Command value (position, velocity, or effort)
+            command_type: Type of command ("position", "velocity", or "effort")
+        """
+        if command_type == 'effort':
+            # Select the appropriate publisher based on joint name
+            if joint_name == 'Upper_left_joint':
+                self.upper_left_pub.publish(Float64(data=value))
+            elif joint_name == 'Upper_right_joint':
+                self.upper_right_pub.publish(Float64(data=value))
+            elif joint_name == 'Lower_left_joint':
+                self.lower_left_pub.publish(Float64(data=value))
+            elif joint_name == 'Lower_right_joint':
+                self.lower_right_pub.publish(Float64(data=value))
+        else:
+            # Use the joint trajectory controller for position/velocity commands
+            joint_state = JointState()
+            joint_state.name = [joint_name]
 
-        self.joint_cmd_pub.publish(joint_state) 
-        self.get_logger().info(f"Publishing Joint Command: {joint_name} to position {joint_position}")
+            if command_type == 'position':
+                joint_state.position = [value]
+                joint_state.velocity = [0.0]
+                joint_state.effort = [0.0]
+            elif command_type == 'velocity':
+                joint_state.position = [0.0]
+                joint_state.velocity = [value]
+                joint_state.effort = [0.0]
+            
+            self.joint_cmd_pub.publish(joint_state)
+        self.get_logger().info(f"Publishing Joint Command: {joint_name} to {command_type} {value}")
+
+    # Publish commands to all joints at once
+    def publish_all_joint_commands(self, positions):
+        """
+        Publish position commands to all joints at once
+        
+        Args:
+            positions: Dictionary mapping joint names to position values
+        """
+        Joint_State = JointState()
+        Joint_State.name = list(positions.keys())
+        Joint_State.position = list(positions.values())
+        Joint_State.velocity = [0.0] * len(positions)
+        Joint_State.effort = [0.0] * len(positions)
+
+        self.joint_cmd_pub.publish(Joint_State)
+        self.get_logger().info(f"Publishing All Joint Commands: {positions}")
+
+    # Get the current state of the robot (for reinforcement learning)
+    def get_robot_state(self):
+        """
+        Get the current state of the robot for reinforcement learning
+        
+        Returns:
+            state: Dictionary containing all relevant state information
+        """
+        with self.state_lock:
+            state = {
+                'joint_positions': self.joint_positions.copy(),
+                'joint_velocities': self.joint_velocities.copy(),
+                'orientation': self.robot_orentation.copy(),
+                'linear_acceleration': self.robot_linear_accel.copy(),
+                'angular_velocity': self.robot_angular_vel.copy(),
+                'is_fallen': self.is_fallen,
+                # 'camera_data': self.camera_data,
+                # Add more state information as needed in link with the project
+            }    
+            # Add laser data if available
+            if self.laser_data is not None:
+                state['laser_ranges'] = list(self.laser_data.ranges)
+
+            return state 
+
+    # Check the robot state periodically
+    def check_robot_state(self):
+        """
+        Check the robot state periodically and take action if needed
+        """
+        with self.state_lock:
+            if self.is_fallen:
+                self.get_logger().warn("Robot is fallen! Taking action...")
+                # Here you could implement recovery behaviors or reset the simulation
+                # Reset the simulation 
+                
+                self.reset_simulation()
+                # For now, just log the state
+                #self.get_logger().info("Robot is upright. Continuing operation...")
+
+    # Helper function to convert quaternion to euler angles
+    def euler_from_quaternion(self, quaternion):
+        """
+        Convert quaternion to euler angles (roll, pitch, yaw)
+        
+        Args:
+            quaternion: List or tuple of 4 elements representing the quaternion (x, y, z, w)
+        
+        Returns:
+            roll, pitch, yaw: Euler angles in radians
+        """
+        x, y, z, w = quaternion
+        
+        # Roll (x-axis rotation)
+        sinr_cosp = 2.0 * (w * x + y * z)
+        cosr_cosp = 1.0 - 2.0 * (x * x + y * y)
+        roll = np.arctan2(sinr_cosp, cosr_cosp)
+
+        # Pitch (y-axis rotation)
+        sinp = 2.0 * (w * y - z * x)
+        if abs(sinp) >= 1:
+            pitch = np.copysign(np.pi / 2, sinp) # Use 90 degrees if out of range
+        else:
+            pitch = np.arcsin(sinp)
+
+        # Yaw (z-axis rotation)
+        siny_cosp = 2.0 * (w * z + x * y)
+        cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
+        yaw = np.arctan2(siny_cosp, cosy_cosp)
+        return roll, pitch, yaw
+        # Add more helper functions as needed for your project
+        # For example, you might want to add functions for resetting the simulation,
+        # checking battery status, etc.
+        # You can also add functions for more complex control logic
+        # based on the sensor data received.
+        # For example, you might want to implement obstacle avoidance,
+        # path planning, etc. based on the laser scan data.
+
+        # Helper function to reset the simulation
+    def reset_simulation(self):
+        """
+        Reset the simulation to a known state
+        """
+        # This is a placeholder function. You can implement the logic to reset the simulation
+        # For example, you might want to send a reset command to the Gazebo simulation
+        self.get_logger().info("Resetting simulation...")
+        # Implement the reset logic here
+        # For example, you might want to send a service call to reset the simulation
+        # or set the robot position to a known state.
+        pass
+        # You can also add functions for more complex control logic
 
 
 def main(args=None):
@@ -144,11 +305,22 @@ def main(args=None):
     # Create the RobotControlNode
     robot_control_node = RobotControlNode()
 
-    # Publish a movement command (e.g., moving forward with angular rotation)
-    robot_control_node.publish_cmd(0.5, 0.0)  # Move forward at 0.5 m/s, no rotation
+    # Initalize the robot standing pose - adjust the robot based on your  robots configuration
+    initial_pose = {
+        'Upper_left_joint': 0.1, # pose in radians
+        'Upper_right_joint': -0.1,
+        'Lower_left_joint': -0.2,
+        'Lower_right_joint': 0.0,
+    }
 
-    # Publish a joint command (e.g., move the upper left joint to 0.2 radians)
-    robot_control_node.publish_joint_command("Upper_left_joint", 0.2)
+    #Set the initial pose of the robot
+    robot_control_node.publish_all_joint_commands(initial_pose)
+
+    # wait a momment for the robot to settle(stabilize)
+    time.sleep(1.0)
+    
+    # Publish a small movement command to the robot
+    robot_control_node.publish_cmd(0.1, 0.0)  # Move forward slowly
 
     try:
         # Spin the node to keep receiving data
@@ -163,10 +335,23 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-# This script is a ROS 2 node that subscribes to various sensor data and publishes control commands.
-# This script subscribes to various sensor data (joint states, IMU, camera, lidar) and publishes control commands.
-# It can be used to control a robot in a simulation environment like Gazebo.
-# The script uses ROS 2 and requires the appropriate packages to be installed.
-# Ensure that the robot is properly configured to publish the required sensor data.
-# The script can be extended to include more complex control logic based on the sensor data received.
-# The robot control logic can be enhanced to include obstacle avoidance, path planning, etc.                
+"""
+# This script is used to control the robot model in Gazebo simulation
+# It subscribes to various sensor data (joint states, IMU, camera, laser)
+# and publishes commands to the robot joints and wheels
+# The script also checks the robot state periodically and takes action if needed        """
+# The script is designed to be used with ROS2 and Gazebo simulation
+# The robot model is defined in a URDF file with meshes
+# The script can be extended to include more complex control logic
+# based on the sensor data received
+# The script can also be used for reinforcement learning
+# or other robotic applications
+# The script is designed to be run as a ROS2 node
+# The script can be run using the following command:
+# ros2 run urdf_and_meshes_of_the_robot robot_nodes_control
+# The script can also be launched using a launch file
+# The launch file can be used to launch the Gazebo simulation
+# and the robot control node together
+# The launch file can be used to set parameters
+# and configure the robot model
+# The launch file can also be used to set the world file            
