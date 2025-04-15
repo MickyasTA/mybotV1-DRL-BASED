@@ -1,0 +1,2 @@
+/home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/lib/urdf_and_meshes_of_the_robot/robot_nodes_control
+/home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/lib/urdf_and_meshes_of_the_robot/train_rl_ppo

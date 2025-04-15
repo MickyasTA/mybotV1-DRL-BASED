@@ -1,0 +1,9 @@
+/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot/CMakeFiles/uninstall.dir
+/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot/CMakeFiles/urdf_and_meshes_of_the_robot_uninstall.dir
+/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot/CMakeFiles/test.dir
+/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot/CMakeFiles/edit_cache.dir
+/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot/CMakeFiles/rebuild_cache.dir
+/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot/CMakeFiles/list_install_components.dir
+/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot/CMakeFiles/install.dir
+/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot/CMakeFiles/install/local.dir
+/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot/CMakeFiles/install/strip.dir

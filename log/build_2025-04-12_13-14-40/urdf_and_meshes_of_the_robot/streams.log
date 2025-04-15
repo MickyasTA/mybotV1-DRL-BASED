@@ -1,0 +1,44 @@
+[0.012s] Invoking command in '/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot': CONDA_PROMPT_MODIFIER=(base) /usr/bin/cmake --build /home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot -- -j16 -l16
+[0.054s] Invoked command in '/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot' returned '0': CONDA_PROMPT_MODIFIER=(base) /usr/bin/cmake --build /home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot -- -j16 -l16
+[0.066s] Invoking command in '/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot': CONDA_PROMPT_MODIFIER=(base) /usr/bin/cmake --install /home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot
+[0.075s] -- Install configuration: ""
+[0.076s] -- Execute custom install script
+[0.076s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/lib/urdf_and_meshes_of_the_robot/robot_nodes_control.py
+[0.077s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/lib/urdf_and_meshes_of_the_robot/train_rl_ppo.py
+[0.077s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//launch/display.launch
+[0.077s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//launch/display.launch.py
+[0.077s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//launch/gazebo.launch
+[0.077s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//launch/gazebo.launch.py
+[0.078s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//urdf/old_urdf_and_meshes_of_the_robot.urdf.xacro
+[0.078s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//urdf/urdf_and_meshes_of_the_robot.csv
+[0.078s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//urdf/urdf_and_meshes_of_the_robot.urdf
+[0.078s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//config/joint_names_URDF_AND_MESHES_OF_THE_ROBOT.yaml
+[0.078s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//meshes/BODY_link.STL
+[0.078s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//meshes/IMU_link.STL
+[0.079s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//meshes/Left_wheel.STL
+[0.079s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//meshes/Lower_left_leg.STL
+[0.079s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//meshes/Lower_right_link.STL
+[0.079s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//meshes/Right_wheel.STL
+[0.079s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//meshes/Upper_left_leg.STL
+[0.079s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//meshes/Upper_right_link.STL
+[0.079s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//meshes/camera_link.STL
+[0.079s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//meshes/lidar_link.STL
+[0.080s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot//worlds/empty.world
+[0.080s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/ament_index/resource_index/package_run_dependencies/urdf_and_meshes_of_the_robot
+[0.080s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/ament_index/resource_index/parent_prefix_path/urdf_and_meshes_of_the_robot
+[0.080s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/environment/ament_prefix_path.sh
+[0.080s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/environment/ament_prefix_path.dsv
+[0.080s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/environment/path.sh
+[0.081s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/environment/path.dsv
+[0.081s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/local_setup.bash
+[0.081s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/local_setup.sh
+[0.081s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/local_setup.zsh
+[0.081s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/local_setup.dsv
+[0.081s] -- Symlinking: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/package.dsv
+[0.090s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/ament_index/resource_index/packages/urdf_and_meshes_of_the_robot
+[0.090s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/cmake/urdf_and_meshes_of_the_robotConfig.cmake
+[0.091s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/cmake/urdf_and_meshes_of_the_robotConfig-version.cmake
+[0.091s] -- Up-to-date symlink: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/share/urdf_and_meshes_of_the_robot/package.xml
+[0.091s] -- Up-to-date: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/lib/urdf_and_meshes_of_the_robot/robot_nodes_control
+[0.091s] -- Up-to-date: /home/mickyas/ros2_ws/install/urdf_and_meshes_of_the_robot/lib/urdf_and_meshes_of_the_robot/train_rl_ppo
+[0.093s] Invoked command in '/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot' returned '0': CONDA_PROMPT_MODIFIER=(base) /usr/bin/cmake --install /home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot

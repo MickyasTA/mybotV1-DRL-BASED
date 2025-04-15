@@ -1,0 +1,176 @@
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import JointState, Image
+from geometry_msgs.msg import Twist
+from sensor_msgs.msg import LaserScan, Imu
+from std_msgs.msg import Float64
+
+class RobotControlNode(Node):
+    def __init__(self):
+        super().__init__('robot_control_node')
+        
+        # Initialize joint positions dictionary
+        self.joint_positions = {}
+
+        # Subscribers to receive sensor data
+        self.joint_state_sub = self.create_subscription(
+            JointState,
+            '/joint_states',
+            self.joint_state_callback,
+            10
+        )
+
+        self.imu_sub = self.create_subscription(
+            Imu,
+            '/imu_plugin/out',
+            self.imu_callback,
+            10
+        )
+
+        self.camera_sub = self.create_subscription(
+            Image,
+            '/camera_sensor/image_raw',
+            self.camera_callback,
+            10
+        )
+
+        self.laser_sub = self.create_subscription(
+            LaserScan,
+            '/gazebo_ros_laser_controller/out',
+            self.laser_callback,
+            10
+        )
+
+        # Publisher to send commands to the wheels (for movement)
+        self.cmd_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+
+        # Publisher to control specific joints
+        self.joint_cmd_pub = self.create_publisher(JointState, '/joint_trajectory_controller/command', 10)
+
+    # Callback for joint states (wheel and leg joints)
+    def joint_state_callback(self, msg):
+        self.get_logger().info(f"Joint States Received: {msg.name}")
+        for i, name in enumerate(msg.name):
+            position = msg.position[i] if i < len(msg.position) else 0.0
+            velocity = msg.velocity[i] if i < len(msg.velocity) else 0.0
+            # Store joint positions and velocities in a dictionary
+            self.joint_positions[name] = {
+                'position': position,
+                'velocity': velocity
+            }
+            # Log the joint states 
+            self.get_logger().info(f"{name} position: {msg.position[i]}, velocity: {msg.velocity[i]}")
+            # Get the position of the wheel joints for each joint and set it on a variable 
+            if name == "Upper_left_joint":
+                Upper_left_joint_pos = msg.position[i]
+                Upper_left_joint_vel = msg.velocity[i]
+                self.get_logger().info(f"Wheel joint position: {Upper_left_joint_pos}")
+                self.get_logger().info(f"Wheel joint velocity: {Upper_left_joint_vel}")
+            if name == "Upper_right_joint":
+                Upper_right_joint_pos = msg.position[i]
+                Upper_right_joint_vel = msg.velocity[i]
+                self.get_logger().info(f"Wheel joint position: {Upper_right_joint_pos}")
+                self.get_logger().info(f"Wheel joint velocity: {Upper_right_joint_vel}")
+            if name == "Lower_left_joint":
+                Lower_left_joint_pos = msg.position[i]
+                Lower_left_joint_vel = msg.velocity[i]
+                self.get_logger().info(f"Wheel joint position: {Lower_left_joint_pos}")
+                self.get_logger().info(f"Wheel joint velocity: {Lower_left_joint_vel}")
+            if name == "Lower_right_joint":
+                Lower_right_joint_pos = msg.position[i]
+                Lower_right_joint_vel = msg.velocity[i]
+                self.get_logger().info(f"Wheel joint position: {Lower_right_joint_pos}")
+                self.get_logger().info(f"Wheel joint velocity: {Lower_right_joint_vel}")
+            if name == "Left_joint":
+                Left_wheel_pos = msg.position[i]
+                Left_wheel_vel = msg.velocity[i]
+                self.get_logger().info(f"Wheel joint position: {Left_wheel_pos}")
+                self.get_logger().info(f"Wheel joint velocity: {Left_wheel_vel}")
+            if name == "Right_joint":
+                Right_wheel_pos = msg.position[i]
+                Right_wheel_vel = msg.velocity[i]
+                self.get_logger().info(f"Wheel joint position: {Right_wheel_pos}")
+                self.get_logger().info(f"Wheel joint velocity: {Right_wheel_vel}")
+
+    # Callback for IMU data
+    def imu_callback(self, msg):
+        Imu_orientation = msg.orientation
+        Imu_linear_acceleration = msg.linear_acceleration
+        self.get_logger().info(f"IMU data received: Orientation: {Imu_orientation}, Linear Accel: {Imu_linear_acceleration}")
+
+    # Callback for camera data
+    def camera_callback(self, msg):
+        Image_width = msg.width
+        Image_height = msg.height
+        Image_encoding = msg.encoding
+        Image_data = msg.data
+        self.get_logger().info(f"Camera data received: Width: {Image_width}, Height: {Image_height}, Encoding: {Image_encoding}")
+        self.get_logger().info(f"Camera data received: {len(Image_data)} bytes of image data")
+
+    # Callback for laser scan data
+    def laser_callback(self, msg):
+        LaserScan_ranges = msg.ranges
+        LaserScan_angle_min = msg.angle_min
+        LaserScan_angle_max = msg.angle_max
+        LaserScan_angle_increment = msg.angle_increment
+        LaserScan_time_increment = msg.time_increment
+        LaserScan_range_min = msg.range_min
+        LaserScan_range_max = msg.range_max
+        self.get_logger().info(f"Laser Scan data received: Angle Min: {LaserScan_angle_min}, Angle Max: {LaserScan_angle_max}")
+        self.get_logger().info(f"Laser Scan data received: Angle Increment: {LaserScan_angle_increment}, Time Increment: {LaserScan_time_increment}")
+        self.get_logger().info(f"Laser Scan data received: Range Min: {LaserScan_range_min}, Range Max: {LaserScan_range_max}")
+        self.get_logger().info(f"Laser Scan data received: {len(LaserScan_ranges)} ranges")
+
+    # Publish movement command to the robot (e.g., for wheels)
+    def publish_cmd(self, linear_x, angular_z):
+        cmd = Twist()
+        cmd.linear.x = linear_x
+        cmd.angular.z = angular_z
+        self.cmd_pub.publish(cmd)
+        self.get_logger().info(f"Publishing CMD: linear_x={linear_x}, angular_z={angular_z}")
+
+    # Publish joint commands (e.g., to control the legs or arms)
+    def publish_joint_command(self, joint_name, joint_position):
+        joint_state = JointState()
+        joint_state.name = [joint_name]
+        joint_state.position = [joint_position]
+        joint_state.velocity = [0.0]  # Not needed in this example, but can be added if necessary
+        joint_state.effort = [0.0]    # Not needed in this example, but can be added if necessary
+
+        self.joint_cmd_pub.publish(joint_state) 
+        self.get_logger().info(f"Publishing Joint Command: {joint_name} to position {joint_position}")
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    # Create the RobotControlNode
+    robot_control_node = RobotControlNode()
+
+    # Publish a movement command (e.g., moving forward with angular rotation)
+    robot_control_node.publish_cmd(0.5, 0.0)  # Move forward at 0.5 m/s, no rotation
+
+    # Publish a joint command (e.g., move the upper left joint to 0.2 radians)
+    robot_control_node.publish_joint_command("Upper_left_joint", 0.2)
+
+    try:
+        # Spin the node to keep receiving data
+        rclpy.spin(robot_control_node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        # Shutdown when done
+        robot_control_node.destroy_node()
+        rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+# This script is a ROS 2 node that subscribes to various sensor data and publishes control commands.
+# This script subscribes to various sensor data (joint states, IMU, camera, lidar) and publishes control commands.
+# It can be used to control a robot in a simulation environment like Gazebo.
+# The script uses ROS 2 and requires the appropriate packages to be installed.
+# Ensure that the robot is properly configured to publish the required sensor data.
+# The script can be extended to include more complex control logic based on the sensor data received.
+# The robot control logic can be enhanced to include obstacle avoidance, path planning, etc.                
