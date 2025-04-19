@@ -1,1 +1,0 @@
-/home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/scripts/train_rl_ppo.py

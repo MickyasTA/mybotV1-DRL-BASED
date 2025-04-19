@@ -1,1 +1,0 @@
-/home/mickyas/ros2_ws/build/urdf_and_meshes_of_the_robot/ament_cmake_environment_hooks/local_setup.zsh
