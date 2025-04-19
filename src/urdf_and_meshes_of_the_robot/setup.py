@@ -9,7 +9,7 @@ setup(
     name=package_name,
     version='0.0.0',
     # Be explicit about which packages to include
-    packages=[package_name, 'scripts'], # Include the scripts directory as a package 
+    packages=[package_name, package_name + '.scripts'], # Include the scripts directory as a package 
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -30,8 +30,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'robot_nodes_control = scripts.robot_nodes_control:main',
-            'train_rl_ppo = scripts.train_rl_ppo:main',
+            'robot_nodes_control = urdf_and_meshes_of_the_robot.scripts.robot_nodes_control:main',
+            'train_rl_ppo = urdf_and_meshes_of_the_robot.scripts.train_rl_ppo:main',
         ],
     },
 )
