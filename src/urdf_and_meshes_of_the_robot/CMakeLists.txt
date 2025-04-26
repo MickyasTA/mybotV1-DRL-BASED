@@ -1,32 +1,24 @@
 cmake_minimum_required(VERSION 3.8)
 project(urdf_and_meshes_of_the_robot)
 
-# Find dependencies
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# Find core build dependencies
 find_package(ament_cmake REQUIRED)
-# find_package(ament_cmake_python REQUIRED)
 find_package(rclpy REQUIRED)
 
-
-find_package(robot_state_publisher REQUIRED)
-find_package(joint_state_publisher REQUIRED)
-find_package(rviz2 REQUIRED)
-find_package(gazebo_ros REQUIRED)
+# Only core message packages need to be REQUIRED during build
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(gazebo_msgs REQUIRED)
 
+# Handle runtime dependencies differently
+# These might not have CMake modules but are still needed at runtime
+# They're declared in package.xml and will be verified during package installation
 
-# Install Python modules
-ament_python_install_package(${PROJECT_NAME})
-
-# Install Python modules
-# ament_python_install_package(${PROJECT_NAME})
-# ament_python_install_package(scripts)
-
-# Create a symlink for the Python scripts with correct naming
-
-# Install Python scripts
+# Install Python scripts directly without using ament_python_install_package
 install(PROGRAMS
   scripts/robot_nodes_control.py
   scripts/train_rl_ppo.py
@@ -34,28 +26,44 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# Also install them without the .py extension
-# install(PROGRAMS
-#   scripts/robot_nodes_control.py 
-#   DESTINATION lib/${PROJECT_NAME}
-#   RENAME robot_nodes_control
-# )
+# Create executable symlinks
+foreach(script robot_nodes_control train_rl_ppo env)
+  install(CODE
+    "execute_process(
+      COMMAND ${CMAKE_COMMAND} -E create_symlink
+      ${CMAKE_INSTALL_PREFIX}/lib/${PROJECT_NAME}/${script}.py
+      ${CMAKE_INSTALL_PREFIX}/lib/${PROJECT_NAME}/${script}
+    )"
+  )
+endforeach()
 
-# install(PROGRAMS
-#   scripts/train_rl_ppo.py
-#   DESTINATION lib/${PROJECT_NAME}
-#   RENAME train_rl_ppo
-# )
+# Check which directories exist and install them conditionally
+foreach(dir launch urdf config meshes worlds)
+  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${dir})
+    install(DIRECTORY ${dir} DESTINATION share/${PROJECT_NAME}/)
+  endif()
+endforeach()
 
-# Install launch files
-install(DIRECTORY
-  launch
-  urdf
-  config
-  meshes
-  worlds
-  resources
-  DESTINATION share/${PROJECT_NAME}/
+# Handle resource directory specially (not resources)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/resource)
+  install(DIRECTORY resource DESTINATION share/${PROJECT_NAME}/)
+endif()
+
+# Create a marker file for the package index
+# First ensure the resource directory exists
+install(CODE "file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/resource)")
+install(CODE "file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/resource/${PROJECT_NAME} \"\")")
+install(FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/resource/${PROJECT_NAME}
+  DESTINATION share/ament_index/resource_index/packages
 )
 
+# Install package.xml
+install(FILES
+  package.xml
+  DESTINATION share/${PROJECT_NAME}
+)
+
+# List runtime dependencies here for clarity
+# These are verified through package.xml
 ament_package()

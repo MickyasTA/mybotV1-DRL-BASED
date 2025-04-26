@@ -46,15 +46,6 @@ def generate_launch_description():
             arguments=['-d', os.path.join(
                 get_package_share_directory('urdf_and_meshes_of_the_robot'), 'config', 'urdf.rviz')]
         ),
-        # Gazebo simulation of the robot model with the urdf file and meshes 
-        # ExecuteProcess(
-        #     cmd=['/usr/bin/gazebo', '--verbose', '-s', 'libgazebo_ros_factory.so'],
-        #     output='screen'),
-        
-        # The above ExecuteProcess is replaced with the IncludeLaunchDescription
-        # to include the gazebo launch file from the gazebo_ros package.
-        # The gazebo launch file is used to launch the gazebo simulation with the robot model.
-        # Replace the ExecuteProcess call with:
 
         # Include the Gazebo launch file
         IncludeLaunchDescription(

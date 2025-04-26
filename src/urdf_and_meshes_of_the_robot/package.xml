@@ -1,4 +1,7 @@
-<package format="2">
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+
+<package format="3">
   <name>urdf_and_meshes_of_the_robot</name>
   <version>1.0.0</version>
   <description>
@@ -10,9 +13,10 @@ for urdf_and_meshes_of_the_robot robot</p>
   <maintainer email="mickyastamiru92@gmail.com" />
   <license>BSD</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <build_depend>ament_cmake_python</build_depend>
-  <build_depend>ament_python</build_depend>
+  <!-- <build_depend>ament_cmake_python</build_depend> -->
+  <!-- <build_depend>ament_python</build_depend> -->
   
+  <depend>rclpy</depend>
   <depend>roslaunch</depend>
   <depend>robot_state_publisher</depend>
   <depend>joint_state_publisher</depend>
@@ -21,6 +25,7 @@ for urdf_and_meshes_of_the_robot robot</p>
   <depend>gazebo_ros_pkgs</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
   <depend>gazebo_msgs</depend>
 
   <depend>python3-numpy</depend>
@@ -29,14 +34,13 @@ for urdf_and_meshes_of_the_robot robot</p>
   <depend>joint_state_publisher_gui</depend>
   <depend>gazebo</depend>
 
-  <depend>rclpy</depend>
+
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
   <export>
-    <architecture_independent />
     <build_type>ament_cmake</build_type>
-    <gazebo_ros gazebo_model_path="${prefix}/urdf_and_meshes_of_the_robot/meshes" />
+    <gazebo_ros gazebo_model_path="${prefix}/meshes" />
   </export>
 </package>
