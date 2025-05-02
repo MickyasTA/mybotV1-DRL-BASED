@@ -1,15 +1,8 @@
-<!-- <?xml version="1.0"> -->
+<?xml version="1.0"?> 
 
-<!-- <?xml version="1.0" encoding="utf-8"?> -->
-<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
-     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
-     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
-
-
-<robot
-  name="urdf_and_meshes_of_the_robot">
-   <link name="base_link"/>  <!-- Dummy link added -->
-
+<robot name="urdf_and_meshes_of_the_robot" xmlns:xacro = "http://ros.org/wiki/xacro">
+   
+  <link name="base_link"/>  <!-- Dummy link added -->
   <joint name="base_joint" type="fixed">
     <parent link="base_link"/>
     <child link="BODY_link"/>
@@ -37,7 +30,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/BODY_link.STL"/>
+          filename="package://urdf_and_meshes_of_the_robot/meshes/BODY_link.STL"/>
       </geometry>
       <material
         name="Alumuniam 1060 Alloy">
@@ -51,7 +44,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/BODY_link.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/BODY_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -77,7 +70,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/Upper_left_leg.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/Upper_left_leg.STL" />
       </geometry>
       <material
         name="Alumuniam 1060 Alloy">
@@ -91,7 +84,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/Upper_left_leg.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/Upper_left_leg.STL" />
       </geometry>
     </collision>
   </link>
@@ -135,7 +128,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/Lower_left_leg.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/Lower_left_leg.STL" />
       </geometry>
       <material
         name="Alumuniam 1060 Alloy">
@@ -149,7 +142,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/Lower_left_leg.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/Lower_left_leg.STL" />
       </geometry>
     </collision>
   </link>
@@ -193,7 +186,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/Left_wheel.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/Left_wheel.STL" />
       </geometry>
       <material
         name="Rubber">
@@ -207,7 +200,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/Left_wheel.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/Left_wheel.STL" />
       </geometry>
     </collision>
   </link>
@@ -251,7 +244,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/Upper_right_link.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/Upper_right_link.STL" />
       </geometry>
       <material
         name="Alumuniam 1060 Alloy">
@@ -265,7 +258,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/Upper_right_link.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/Upper_right_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -309,7 +302,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/Lower_right_link.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/Lower_right_link.STL" />
       </geometry>
       <material
         name="Alumuniam 1060 Alloy">
@@ -323,7 +316,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/Lower_right_link.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/Lower_right_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -367,7 +360,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/Right_wheel.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/Right_wheel.STL" />
       </geometry>
       <material
         name="Rubber ">
@@ -381,7 +374,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/Right_wheel.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/Right_wheel.STL" />
       </geometry>
     </collision>
   </link>
@@ -422,7 +415,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/lidar_link.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/lidar_link.STL" />
       </geometry>
       <material
         name="">
@@ -436,7 +429,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/lidar_link.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/lidar_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -475,7 +468,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/camera_link.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/camera_link.STL" />
       </geometry>
       <material
         name="">
@@ -489,7 +482,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/camera_link.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/camera_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -499,7 +492,7 @@
     type="fixed">
     <origin
       xyz="0 -0.0868463319293926 0.00105377166734255"
-      rpy="1.74532925199432 0 0" />
+      rpy="1.57 0 -1.57" />
     <parent
       link="BODY_link" />
     <child
@@ -540,7 +533,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/IMU_link.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/IMU_link.STL" />
       </geometry>
       <material
         name="">
@@ -554,7 +547,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="file:///home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/meshes/IMU_link.STL" />
+          filename="package://urdf_and_meshes_of_the_robot/meshes/IMU_link.STL" />
       </geometry>
     </collision>
   </link>

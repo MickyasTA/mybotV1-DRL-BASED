@@ -54,7 +54,7 @@ def generate_launch_description():
                             'launch', 'gazebo.launch.py')
             ]),
             launch_arguments={
-                #'world': 'false',  # Empty world
+                # 'world': 'true',  # Empty world
                 'verbose': 'true'
             }.items()
         ),

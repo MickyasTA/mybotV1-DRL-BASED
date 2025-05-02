@@ -16,10 +16,20 @@ def generate_launch_description():
     
     # Launch arguments
     use_sim_time = LaunchConfiguration('use_sim_time', default='true')
-    world_file = LaunchConfiguration('world_file', default='')
+    world_file = LaunchConfiguration('world_file', default='world1.world')
+   
+    # Path to the Gazebo world file
+    world_file = os.path.join(pkg_dir, 'worlds', 'world1.world')
     
     # RViz configuration
     rviz_config = os.path.join(pkg_dir, 'config', 'urdf.rviz')
+
+    # Physics parameters
+    physics_params = {'physics': 'ode',
+                     'max_step_size': '0.001',
+                     'real_time_factor': '1.0',
+                     'real_time_update_rate': '1000.0'}
+    
     # Declare launch arguments
     declare_use_sim_time = DeclareLaunchArgument(
         'use_sim_time',
@@ -29,8 +39,8 @@ def generate_launch_description():
     
     declare_world_file = DeclareLaunchArgument(
         'world_file',
-        default_value='',
-        description='/home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/worlds/empty.world'
+        default_value='world1.world',
+        description='/home/mickyas/ros2_ws/src/urdf_and_meshes_of_the_robot/worlds/world1.world'
     )
     
     # Get the path to the URDF file
@@ -77,7 +87,7 @@ def generate_launch_description():
     )
     
     # Joint state publisher node
-    joint_state_publisher = Node(
+    joint_state_publisherNode = Node(
         package='joint_state_publisher',
         executable='joint_state_publisher',
         name='joint_state_publisher',
@@ -102,6 +112,9 @@ def generate_launch_description():
             get_package_share_directory('urdf_and_meshes_of_the_robot'), 'config', 'urdf.rviz')]
     )
 
+
+    
+
     # Return the launch description
     return LaunchDescription([
         declare_use_sim_time,
@@ -109,7 +122,7 @@ def generate_launch_description():
         robot_state_publisher,
         gazebo_launch,
         spawn_entity,
-        joint_state_publisher,
+        joint_state_publisherNode,
         robot_control_node,
         rviz_node,
     ])

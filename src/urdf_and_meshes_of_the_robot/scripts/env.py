@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 # Reinforcement Learning Environment using gazebo and ROS2 for robot control 
+
+"""
+conda activate ros2_rl_env
+tensorboard --logdir=./PPO_4
+
+"""
 import rclpy
 from rclpy.node import Node
 import numpy as np
 import time
 import gym
 from gym import spaces
-from sensor_msgs.msg import JointState, Image, LaserScan
+from sensor_msgs.msg import JointState, Image, LaserScan, Imu
+
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Float64
 import threading
@@ -26,9 +33,14 @@ class RobotEnv(gym.Env):
         super(RobotEnv, self).__init__()
         
         # Initialize ROS2 node
-        rclpy.init()
+        if not rclpy.ok():
+            rclpy.init()
+            
         self.node = Node('robot_env_node')
-        
+
+        # Set logger level to show only warnings and errors (INFO=20, WARN=30, ERROR=40)
+        self.node.get_logger().set_level(30)  # WARN level
+
         # Run ROS2 on a separate thread
         self.ros_thread = threading.Thread(target=self._ros_spin)
         self.ros_thread.daemon = True
@@ -80,7 +92,7 @@ class RobotEnv(gym.Env):
         # Subscribers for sensor data
         self.laser_sub = self.node.create_subscription(
             LaserScan,
-            '/gazebo_ros_laser_controller/out',
+            '/scan',
             self._laser_callback,
             10
         )
@@ -92,8 +104,8 @@ class RobotEnv(gym.Env):
             10
         )
         self.imu_sub = self.node.create_subscription(
-            Image,
-            '/imu_plugin/out',
+            Imu,
+            '/imu',
             self._imu_callback,
             10
         )
@@ -117,6 +129,10 @@ class RobotEnv(gym.Env):
         self.last_action_time = time.time()
         self.episode_steps = 0
         self.max_episode_steps = 1000  # Max steps per episode
+
+        # Initialize total distance traveled and last position for reward calculation
+        self.total_distance_traveled = 0.0
+        self.last_position = self.robot_position.copy()
 
         # Wait until we get initial sensor data
         self._wait_for_sensor_data()
@@ -143,7 +159,7 @@ class RobotEnv(gym.Env):
                 joints_ready = all(name in self.joint_positions for name in joint_names)
 
                 # check if we have laser data
-                laser_ready = self.laser_data is not None and len(self.laser_data) > 0
+                laser_ready = self.laser_data is not None and hasattr(self.laser_data, 'ranges') #and len(self.laser_data.ranges) > 0
                 # check if we have IMU data
                 imu_ready = (self.imu_orientation is not None and 
                             self.imu_linear_accel is not None and
@@ -158,7 +174,8 @@ class RobotEnv(gym.Env):
             
     def _laser_callback(self, msg):
         """Store laser scan data"""
-        self.laser_data = np.array(msg.ranges, dtype=np.float32)
+        with self.lock:
+            self.laser_data = msg #np.array(msg.ranges, dtype=np.float32)
         
     def _joint_state_callback(self, msg):
         """Store joint state data"""
@@ -256,17 +273,18 @@ class RobotEnv(gym.Env):
             # Get laser data
             laser_obs = np.zeros(360) *10.0 # default laser range max range
             if self.laser_data is not None:
-                ranges = np.array(self.laser_data.ranges)
-                # Clip to max range and handle inf/nan
-                ranges = np.clip(ranges, 0.0, 10.0)
-                ranges[~np.isfinite(ranges)] = 10.0  # Set inf/nan to max range
+                if hasattr(self.laser_data, 'ranges'):
+                    ranges = np.array(self.laser_data.ranges)
+                    # Clip to max range and handle inf/nan
+                    ranges = np.clip(ranges, 0.0, 10.0)
+                    ranges[~np.isfinite(ranges)] = 10.0  # Set inf/nan to max range
 
-                # Downsample or upsample to 360 readings if needed
-                if len(ranges) != 360:
-                    indices = np.linspace(0, len(ranges) - 1, 360, dtype = int)
-                    laser_obs = ranges[indices]
-                else:
-                    laser_obs = ranges
+                    # Downsample or upsample to 360 readings if needed
+                    if len(ranges) != 360:
+                        indices = np.linspace(0, len(ranges) - 1, 360, dtype = int)
+                        laser_obs = ranges[indices]
+                    else:
+                        laser_obs = ranges
 
             # combine all observations
             observation = np.concatenate([
@@ -297,7 +315,7 @@ class RobotEnv(gym.Env):
         self.last_position = self.robot_position.copy()
         
         # Reward for moving forward (in x direction)
-        forward_reward = distance * 10.0
+        forward_reward = distance * 20.0
         reward += forward_reward
         
         # Penalty for tilting too much (but not enough to fall)
@@ -307,14 +325,18 @@ class RobotEnv(gym.Env):
             reward += tilt_penalty
         
         # Penalty for getting too close to obstacles
-        if self.laser_data is not None:
-            min_distance = min(self.laser_data.ranges)
+        if self.laser_data is not None and hasattr(self.laser_data, 'ranges'):
+            min_distance = min([r for r in self.laser_data.ranges if np.isfinite(r)], default=10.0)
             if min_distance < 0.3:
                 obstacle_penalty = -10.0 * (0.3 - min_distance)
                 reward += obstacle_penalty
-        
+
+        # Add a small constant reward for trying
+        exploration_reward = 0.1
+        reward += exploration_reward
+
         # Small penalty for using energy (encourage efficient movement)
-        energy_penalty = -0.1
+        energy_penalty = -0.05
         reward += energy_penalty
         
         # Bonus for staying upright
@@ -325,24 +347,49 @@ class RobotEnv(gym.Env):
 
     def _take_action(self, action):
         """Apply the action to the robot"""
+        # Scale action to appropriate range - increase scaling factor
+        scale_factor = 2.0  # Try increasing this to make actions more visible
         # scale action to appropriate range
-        upper_left = float(action[0])
-        upper_right = float(action[1])
-        lower_left = float(action[2])
-        lower_right = float(action[3])
-        left_wheel = float(action[4])
-        right_wheel = float(action[5])
+        upper_left = float(action[0]) * scale_factor
+        upper_right = float(action[1]) * scale_factor
+        lower_left = float(action[2]) * scale_factor
+        lower_right = float(action[3]) * scale_factor
+
+        # left_wheel = float(action[4]) * scale_factor
+        # right_wheel = float(action[5]) * scale_factor
+
+        # For wheel velocities, use cmd_vel publisher instaied of joint effort
+        linear_x = float(action[4]) * scale_factor
+        angular_z = float(action[5]) * scale_factor
+
+        # Log the actions
+        # Only log actions periodically (e.g., every 20 steps) to reduce console spam
+        if self.episode_steps % 100 == 0:
+            self.node.get_logger().info(f"Taking action: upper_left={upper_left:.3f}, upper_right={upper_right:.3f}, " 
+                                f"linear_x={linear_x:.3f}, angular_z={angular_z:.3f}")
 
         # publish joint commands
-        self._publish_joint_command("Upper_left_joint", upper_left, "effort")
-        self._publish_joint_command("Upper_right_joint", upper_right, "effort")
+        self._publish_joint_command("Upper_left_joint", upper_left, "position")
+        self._publish_joint_command("Upper_right_joint", upper_right, "position")
 
-        self._publish_joint_command("Lower_left_joint", lower_left, "effort")
-        self._publish_joint_command("Lower_right_joint", lower_right, "effort")
+        self._publish_joint_command("Lower_left_joint", lower_left, "position")
+        self._publish_joint_command("Lower_right_joint", lower_right, "position")
 
-        self._publish_joint_command("Left_joint", left_wheel, "velocity")
-        self._publish_joint_command("Right_joint", right_wheel, "velocity")
+        #self._publish_joint_command("Left_joint", left_wheel, "velocity")
+        #self._publish_joint_command("Right_joint", right_wheel, "velocity")
 
+        """
+
+        self.node.get_logger().info(f"Taking action: upper_left={upper_left}, upper_right={upper_right}, linear_x={linear_x}, angular_z={angular_z}")#, wheel_l={left_wheel}, wheel_r={right_wheel}")
+        
+        """
+
+        # Publish wheel velocity using cmd_vel
+        cmd_vel = Twist()
+        cmd_vel.linear.x = linear_x
+        cmd_vel.angular.z = angular_z
+        self.cmd_vel_pub.publish(cmd_vel)
+            
         # update last action time
         self.last_action_time = time.time()
 
@@ -417,33 +464,55 @@ class RobotEnv(gym.Env):
         delta_y = pos2[1] - pos1[1]
         return math.atan2(delta_y, delta_x)
     
-    # def step(self, action):
-    #     """Take an action and return next state, reward, done, info"""
-    #     # Apply action: publish velocity command
-    #     cmd = Twist()
-    #     cmd.linear.x = float(action[0])
-    #     cmd.angular.z = float(action[1])
-    #     self.cmd_vel_pub.publish(cmd)
+    def step(self, action):
+        """Take an action and return next state, reward, done, info"""
+        # Incriment episode steps
+        self.episode_steps += 1
         
-    #     # Wait for effects of action to be captured by sensors
-    #     time.sleep(0.1)
+        # Apply action to the robot joints
+        self._take_action(action)
         
-    #     # Get observation
-    #     observation = self._get_observation()
+        # Wait for effects of action to be captured by sensors
+        time.sleep(0.05)
         
-    #     # Calculate reward
-    #     reward = self._calculate_reward()
+        # Get observation
+        observation = self._get_observation()
         
-    #     # Check if episode is done
-    #     done = False
-    #     if self.laser_data is not None:
-    #         min_distance = np.min(self.laser_data)
-    #         if min_distance < 0.15:  # Collision
-    #             done = True
-                
-    #     info = {}
+        # Calculate reward
+        reward = self._calculate_reward()
+
+        # check if episode is done
+        done = False
+
+        # Episode is done if the robot has fallen
+        if self.is_fallen:
+            done = True
         
-    #     return observation, reward, done, info
+        # Episode is done if the maximum number of steps is reached
+        if self.episode_steps >= self.max_episode_steps:
+            done = True
+
+        # Episode is done if the robot is too close to an obstacle
+        if self.laser_data is not None and hasattr(self.laser_data, 'ranges'):
+            min_distance = min([r for r in self.laser_data.ranges if np.isfinite(r)], default=10.0)
+            if min_distance < 0.15:  # Collision
+                done = True
+
+        # Add additional info if needed for debugging
+        info = {
+            'is_fallen': self.is_fallen,
+            'steps': self.episode_steps,
+            'total_distance_traveled': self.total_distance_traveled,
+            'joint_positions': self.joint_positions,
+            'joint_velocities': self.joint_velocities,
+            'robot_position': self.robot_position,
+            'robot_orientation': self.robot_orientation_euler,
+            'episode_steps': self.episode_steps,
+        }
+
+        # Return observation, reward, done, and info
+        return observation, reward, done, info
+
     
     def reset(self):
         """Reset the environment"""
@@ -453,6 +522,13 @@ class RobotEnv(gym.Env):
         
         # Request reset (in a real implementation)
         self.reset_requested = True
+
+        # reset counters and trakers
+        self.episode_steps = 0
+        self.total_distance_traveled = 0.0
+        self.is_fallen = False
+        self.last_position = self.robot_position.copy()
+        self.episode_start_time = time.time()
         
         # Wait for reset to complete and sensors to update
         time.sleep(1.0)

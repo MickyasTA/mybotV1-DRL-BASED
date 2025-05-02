@@ -23,6 +23,7 @@ install(PROGRAMS
   scripts/robot_nodes_control.py
   scripts/train_rl_ppo.py
   scripts/env.py
+  scripts/robot_test.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
