@@ -1,0 +1,13 @@
+# Parameters for the gazebo_ros nodes loaded into gzserver.
+# Applied to every gazebo_ros node (/** wildcard) so the `gazebo` node that
+# owns the /clock publisher picks up publish_rate.
+#
+# Default gazebo_ros /clock publish_rate is 10 Hz (sim time) -> 0.1 s ticks,
+# far coarser than our 0.02 s (50 Hz) control step. We bump it so the env can
+# resolve 50 Hz control and step the sim accurately at high real-time factor.
+/**:
+  ros__parameters:
+    # 100 Hz sim-time /clock -> 0.01 s ticks = 2 per 0.02 s control step (fine
+    # enough for accurate 50 Hz control) while halving the /clock message flood
+    # vs 200 Hz. Higher rates dropped gzserver RTF and saturated the env executor.
+    publish_rate: 100.0

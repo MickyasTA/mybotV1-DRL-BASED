@@ -1,0 +1,36 @@
+# ros2_control config for the self-balance milestone (STAGE 1: wheels-only).
+# Loaded by the gazebo_ros2_control plugin in mybot_balance.urdf.xacro.
+#
+# Stage 1 = the classic two-wheel inverted-pendulum balance: the RL policy
+# controls the 2 wheel torques; the legs are held rigid by joint friction
+# (see <dynamics> in mybot_geometry.urdf.xacro). This avoids the leg-PD
+# instability and the JointTrajectoryController gzserver crash. Stage 2 will
+# re-introduce actuated legs once balance works.
+#
+# Command topic: /wheel_effort_controller/commands  std_msgs/Float64MultiArray [Left, Right]
+
+controller_manager:
+  ros__parameters:
+    # 250 Hz inner loop: plenty for wheel EFFORT control, and it keeps the
+    # joint_state_broadcaster from flooding /joint_states (it publishes at this
+    # rate). At RTF~5-10x, 1000 Hz here meant 5-10 kHz wall on /joint_states,
+    # which saturated the env's executor thread and throttled stepping to ~13 sps.
+    update_rate: 250
+    use_sim_time: true
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    wheel_effort_controller:
+      type: effort_controllers/JointGroupEffortController
+
+    leg_position_controller:
+      type: position_controllers/JointGroupPositionController
+
+wheel_effort_controller:
+  ros__parameters:
+    joints: [Left_joint, Right_joint]
+
+leg_position_controller:
+  ros__parameters:
+    joints: [hip_yaw_left, hip_roll_left, Upper_left_joint, Lower_left_joint, hip_yaw_right, hip_roll_right, Upper_right_joint, Lower_right_joint]

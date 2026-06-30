@@ -1,0 +1,8 @@
+# Python deps for the from-scratch PPO + env + recording (Python 3.10).
+# ROS 2 Humble itself (rclpy, cv_bridge, sensor_msgs, …) comes from apt, not pip.
+torch>=2.0
+gymnasium>=0.29
+numpy>=1.24
+matplotlib>=3.6
+opencv-python>=4.7        # periodic_recorder.py (cv2.VideoWriter)
+tensorboard>=2.12         # optional: TensorBoard event files

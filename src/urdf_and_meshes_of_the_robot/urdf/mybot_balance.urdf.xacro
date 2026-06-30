@@ -1,0 +1,158 @@
+<?xml version="1.0"?>
+<!--
+  mybot_balance.urdf.xacro
+  ========================
+  Training description for the "self-balance in place" milestone.
+
+  It REUSES the robot geometry (links + joints) from mybot_geometry.urdf.xacro
+  and swaps the original plugin stack for a clean ros2_control setup:
+
+    * Wheels  (Left_joint, Right_joint)  -> EFFORT command interface
+                                            (torque is the correct balancing actuator)
+    * Legs    (Upper/Lower _left/_right)  -> POSITION command interface
+                                            (held at a fixed nominal stance for the MVP)
+    * IMU                                 -> libgazebo_ros_imu_sensor on /imu (non-rendering)
+
+  Deliberately DROPPED for this milestone (re-enable for the navigation stage):
+    * camera + lidar plugins  -> GL/ray rendering is slow and can fail headless on WSL,
+                                 and is irrelevant to inverted-pendulum balancing.
+    * gazebo_ros_diff_drive    -> would fight the wheel effort controller.
+    * libgazebo_ros_joint_state_publisher -> replaced by ros2_control's joint_state_broadcaster.
+
+  The controllers .yaml path is injected by the launch file via the `controllers_file` arg
+  so the description stays machine-independent.
+-->
+<robot name="urdf_and_meshes_of_the_robot" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <!-- Absolute path to config/controllers.yaml, passed in by balance.launch.py -->
+  <xacro:arg name="controllers_file" default=""/>
+
+  <!-- Reuse all links & joints (wheel/leg limits already widened for control) -->
+  <xacro:include filename="$(find urdf_and_meshes_of_the_robot)/urdf/mybot_geometry.urdf.xacro"/>
+
+  <!-- ============================================================= -->
+  <!-- IMU sensor  (correct SDF nesting: <sensor> wraps <plugin>)     -->
+  <!-- Publishes sensor_msgs/Imu on /imu                              -->
+  <!-- ============================================================= -->
+  <gazebo reference="IMU_link">
+    <sensor name="imu_sensor" type="imu">
+      <always_on>true</always_on>
+      <update_rate>200.0</update_rate>
+      <visualize>false</visualize>
+      <plugin name="imu_plugin" filename="libgazebo_ros_imu_sensor.so">
+        <ros>
+          <namespace>/</namespace>
+          <remapping>~/out:=/imu</remapping>
+        </ros>
+        <initial_orientation_as_reference>false</initial_orientation_as_reference>
+        <frame_name>IMU_link</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- ============================================================= -->
+  <!-- Wheel friction (rubber on ground) for reliable traction        -->
+  <!-- ============================================================= -->
+  <gazebo reference="Left_wheel">
+    <mu1>1.2</mu1>
+    <mu2>1.2</mu2>
+    <kp>100000.0</kp>
+    <kd>1.0</kd>
+    <material>Gazebo/Black</material>
+  </gazebo>
+  <gazebo reference="Right_wheel">
+    <mu1>1.2</mu1>
+    <mu2>1.2</mu2>
+    <kp>100000.0</kp>
+    <kd>1.0</kd>
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+  <!-- Hip actuator housings: dark grey in Gazebo -->
+  <gazebo reference="hip_yaw_link_left"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="hip_roll_link_left"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="hip_yaw_link_right"><material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="hip_roll_link_right"><material>Gazebo/DarkGrey</material></gazebo>
+
+  <!-- ============================================================= -->
+  <!-- ros2_control hardware interfaces (gazebo_ros2_control)          -->
+  <!-- ============================================================= -->
+  <ros2_control name="GazeboSystem" type="system">
+    <hardware>
+      <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+    </hardware>
+
+    <!-- ===== Wheels: effort (torque) control ===== -->
+    <joint name="Left_joint">
+      <command_interface name="effort">
+        <param name="min">-20.0</param>
+        <param name="max">20.0</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <state_interface name="effort"/>
+    </joint>
+    <joint name="Right_joint">
+      <command_interface name="effort">
+        <param name="min">-20.0</param>
+        <param name="max">20.0</param>
+      </command_interface>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <state_interface name="effort"/>
+    </joint>
+
+    <!-- ===== Legs: position control (held at zero stance for balance) ===== -->
+    <joint name="hip_yaw_left">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="hip_roll_left">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="Upper_left_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="Lower_left_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="hip_yaw_right">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="hip_roll_right">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="Upper_right_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="Lower_right_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+
+  <!-- ============================================================= -->
+  <!-- gazebo_ros2_control plugin: starts the controller_manager      -->
+  <!-- inside gzserver and loads config/controllers.yaml              -->
+  <!-- ============================================================= -->
+  <gazebo>
+    <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
+      <parameters>$(arg controllers_file)</parameters>
+    </plugin>
+  </gazebo>
+
+</robot>

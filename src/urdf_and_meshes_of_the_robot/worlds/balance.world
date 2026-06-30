@@ -1,0 +1,63 @@
+<?xml version="1.0" ?>
+<!--
+  Flat, obstacle-free world for the self-balance milestone.
+  - real_time_update_rate=0  -> physics runs as fast as the CPU allows (training).
+  - gazebo_ros_state plugin   -> provides /gazebo/get_entity_state and
+                                 /gazebo/set_entity_state (used by balance_env.py
+                                 for deterministic, Markovian resets) and publishes
+                                 /gazebo/model_states.
+  Pause/unpause/reset services (/pause_physics, /unpause_physics, /reset_world,
+  /reset_simulation) come from gazebo_ros's init plugin loaded by the launch file.
+-->
+<sdf version="1.6">
+  <world name="balance_world">
+
+    <!-- Run flat-out; the env paces stepping via pause/unpause -->
+    <physics name="fast_ode" type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>0</real_time_update_rate>
+      <ode>
+        <solver>
+          <!-- 20 iters is ample for a 2-wheel robot on flat ground and ~2x faster
+               than 50; raises gzserver real-time factor for training. -->
+          <type>quick</type>
+          <iters>20</iters>
+          <sor>1.3</sor>
+        </solver>
+        <constraints>
+          <cfm>0.0001</cfm>
+          <erp>0.2</erp>
+          <!-- low correcting vel so any small penetration is NOT violently ejected -->
+          <contact_max_correcting_vel>1.0</contact_max_correcting_vel>
+          <contact_surface_layer>0.01</contact_surface_layer>
+        </constraints>
+      </ode>
+    </physics>
+
+    <gravity>0 0 -9.81</gravity>
+
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+    <include>
+      <uri>model://sun</uri>
+    </include>
+
+    <!-- State get/set services + model_states topic, namespaced under /gazebo -->
+    <plugin name="gazebo_ros_state" filename="libgazebo_ros_state.so">
+      <ros>
+        <namespace>/gazebo</namespace>
+      </ros>
+      <update_rate>50.0</update_rate>
+    </plugin>
+
+    <!-- NOTE: a Gazebo camera sensor was tried here to record REAL Gazebo footage,
+         but Gazebo's OGRE renderer cannot render this robot's STL meshes on WSL
+         (the camera renders primitives fine but produces no image once an STL mesh
+         is in the scene — the same limitation that crashes gzclient). Milestone
+         videos are therefore rendered from the true robot pose by record_episode.py
+         (matplotlib triangle rendering of the STL meshes), which works on WSL. -->
+
+  </world>
+</sdf>

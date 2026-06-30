@@ -28,9 +28,17 @@ for urdf_and_meshes_of_the_robot robot</p>
   <depend>geometry_msgs</depend>
   <depend>gazebo_msgs</depend>
 
+  <!-- ros2_control stack for the self-balance milestone -->
+  <depend>xacro</depend>
+  <depend>controller_manager</depend>
+  <depend>ros2_control</depend>
+  <depend>ros2_controllers</depend>
+  <depend>gazebo_ros2_control</depend>
+
   <depend>python3-numpy</depend>
-  <depend>python3-gym</depend>
-  
+  <!-- periodic_recorder.py records real Gazebo footage via a spawned camera -->
+  <depend>cv_bridge</depend>
+
   <depend>joint_state_publisher_gui</depend>
   <depend>gazebo</depend>
 

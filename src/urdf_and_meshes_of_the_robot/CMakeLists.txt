@@ -20,6 +20,16 @@ find_package(std_msgs REQUIRED)
 
 # Install Python scripts directly without using ament_python_install_package
 install(PROGRAMS
+  # --- self-balance / wheel-legged RL stack (active) ---
+  scripts/balance_env.py          # Gymnasium env (IMU tilt + wheel odometry)
+  scripts/ppo_balance.py          # from-scratch PPO trainer + eval/play
+  scripts/record_episode.py       # FK MP4 render of an episode
+  scripts/periodic_recorder.py    # real headless-Gazebo video via spawned camera
+  scripts/tb_plot_writer.py       # TensorBoard + live PNG graphs
+  scripts/metrics_logger.py       # per-episode CSV + summary JSON
+  scripts/plot_metrics.py         # overview-grid plotter
+  scripts/camera_recorder.py      # (optional) onboard-camera MP4 helper
+  # --- original baseline (kept for reference) ---
   scripts/robot_nodes_control.py
   scripts/train_rl_ppo.py
   scripts/env.py
@@ -50,21 +60,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/resource)
   install(DIRECTORY resource DESTINATION share/${PROJECT_NAME}/)
 endif()
 
-# Create a marker file for the package index
-# First ensure the resource directory exists
-install(CODE "file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/resource)")
-install(CODE "file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/resource/${PROJECT_NAME} \"\")")
-install(FILES
-  ${CMAKE_CURRENT_BINARY_DIR}/resource/${PROJECT_NAME}
-  DESTINATION share/ament_index/resource_index/packages
-)
-
-# Install package.xml
-install(FILES
-  package.xml
-  DESTINATION share/${PROJECT_NAME}
-)
-
-# List runtime dependencies here for clarity
-# These are verified through package.xml
+# NOTE: the package-index marker and package.xml install are handled
+# automatically by ament_package() below. The previous custom install(CODE ...)
+# resource-marker block was redundant and broke `colcon build --symlink-install`.
 ament_package()

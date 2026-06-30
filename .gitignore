@@ -1,0 +1,35 @@
+# ROS2 / colcon build artifacts (do not commit)
+build/
+install/
+log/
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Training artifacts
+models/
+runs/
+checkpoints/
+tensorboard/
+training_results/
+*.pt
+*.pth
+*.zip
+*.mp4
+*.tfevents.*
+
+# Debug / scratch images
+robot_render.png
+_camera_*.png
+_gazebo_*.png
+
+# Gazebo / export logs
+*.log
+export.log
+
+# OS / editor
+.DS_Store
