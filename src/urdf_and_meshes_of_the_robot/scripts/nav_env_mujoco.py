@@ -80,6 +80,15 @@ class GoalNavEnv(MujocoBalanceEnv):
         self.w_pose = 0.6       # keep legs near the nominal (0) stance -> no cheap
                                 # leg-splaying for balance; legs move only when it pays
                                 # off (later: ducking/terrain). nominal leg qpos = 0.
+        # anti-SCISSOR: the policy discovered a fore-aft split (one wheel pushed
+        # forward, one back -> a static tripod, no balancing needed). Penalize the
+        # wheelbase measured ALONG THE HEADING: ~0 in a proper stance and in symmetric
+        # squats (both wheels move together), large for the scissor -> makes the cheat
+        # decisively unprofitable without locking or restricting the legs.
+        self.w_scissor = 10.0
+        self.w_legvel = 0.002   # gentle "don't flail the legs" (weird jitter) term
+        self._wheel_bid = [int(self.model.body("Left_wheel").id),
+                           int(self.model.body("Right_wheel").id)]
 
     # ---- goal geometry -------------------------------------------------------
     def _base_yaw(self):
@@ -170,11 +179,19 @@ class GoalNavEnv(MujocoBalanceEnv):
         v_to_goal = (ddx * bvx + ddy * bvy) / dn
         # posture: sum of squared leg-joint deviation from the 0 stance (kills leg-splaying)
         leg_dev = float(sum(self.data.qpos[self._q[j]] ** 2 for j in LEG_JOINTS))
+        # anti-scissor: fore-aft wheelbase along the heading (see __init__)
+        pl = self.data.xpos[self._wheel_bid[0]]
+        pr = self.data.xpos[self._wheel_bid[1]]
+        yaw = self._base_yaw()
+        d_fore = float((pl[0] - pr[0]) * math.cos(yaw) + (pl[1] - pr[1]) * math.sin(yaw))
+        leg_vel2 = float(sum(self.data.qvel[self._v[j]] ** 2 for j in LEG_JOINTS))
 
         reward = (1.0                                             # alive
                   - self.w_tilt * tilt * tilt                     # stay upright
                   - self.w_yaw * wz * wz                          # no spinning
                   - self.w_pose * leg_dev                         # keep legs at stance (no splits)
+                  - self.w_scissor * d_fore * d_fore              # no fore-aft scissor stance
+                  - self.w_legvel * leg_vel2                      # no leg flailing
                   - self.w_act * float(np.sum(a * a))             # effort
                   - self.w_arate * float(np.sum((a - prev_a) ** 2)))
         if self.goal_reward:                                      # Stage 2b: drive to goal
@@ -195,7 +212,7 @@ class GoalNavEnv(MujocoBalanceEnv):
         if self.render_mode == "human":
             self.render()
         return self._obs(), float(reward), terminated, truncated, {
-            "tilt": tilt, "dist": dist, "at_goal": at_goal}
+            "tilt": tilt, "dist": dist, "at_goal": at_goal, "scissor": abs(d_fore)}
 
 
 # ============================================================================ #
