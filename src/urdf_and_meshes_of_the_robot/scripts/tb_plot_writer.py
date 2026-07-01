@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
 """
-TBPlotWriter — a drop-in SummaryWriter that ALSO renders every scalar metric to a
-readable PNG graph, live, into a single folder.
+TBPlotWriter / PngPlotWriter — live PNG graphs of every scalar metric, one file per tag
+plus a combined _overview.png, refreshed by a background thread. raw = #9ecae1,
+EMA-smoothed = #08519c.
 
-Mirrors the collision_avoidance_system results/eval style: TensorBoard event files
-under runs/<ts>/ PLUS one PNG per metric + a combined _overview.png under graphs/,
-refreshed live by a background thread. raw = #9ecae1, EMA-smoothed = #08519c.
+TBPlotWriter ALSO writes real TensorBoard event files (needs torch) — used by the
+PyTorch trainers (ppo_balance.py, ppo_parallel.py). PngPlotWriter has the identical
+add_scalar/render/close API but no torch dependency — used by the JAX/MJX trainer
+(mjx_ppo.py), which runs in an isolated conda env that doesn't have torch installed.
+Both write into the SAME run-dir layout:
+
+    metrics/runs/<session>/    <- TensorBoard event files (TBPlotWriter only)
+    metrics/graphs/            <- one PNG per scalar + _overview.png (both)
 
 Usage:
-    writer = TBPlotWriter(log_dir=<metrics>/runs/<ts>, graph_dir=<metrics>/graphs)
+    writer = TBPlotWriter(log_dir=<metrics>/runs/<session>, graph_dir=<metrics>/graphs)
+    # or, torch-free: writer = PngPlotWriter(graph_dir=<metrics>/graphs)
     writer.add_scalar("episode/score", score, episode)
     ...
     writer.close()
@@ -22,8 +29,6 @@ from collections import defaultdict
 import matplotlib
 matplotlib.use("Agg")           # headless: render to files, no display needed
 import matplotlib.pyplot as plt
-
-from torch.utils.tensorboard import SummaryWriter
 
 
 def _ema(values, alpha=0.1):
@@ -40,12 +45,11 @@ def _safe(tag):
     return re.sub(r"[^0-9a-zA-Z._-]+", "__", tag).strip("_") or "metric"
 
 
-class TBPlotWriter(SummaryWriter):
-    """SummaryWriter that also exports live PNG graphs of every scalar."""
+class _PlotMixin:
+    """Shared live-PNG-rendering behavior for TBPlotWriter and PngPlotWriter."""
 
-    def __init__(self, log_dir=None, graph_dir=None, refresh_sec=20.0, **kwargs):
-        super().__init__(log_dir=log_dir, **kwargs)
-        self.graph_dir = graph_dir or os.path.join(log_dir or ".", "graphs")
+    def _init_plotting(self, graph_dir, refresh_sec):
+        self.graph_dir = graph_dir
         os.makedirs(self.graph_dir, exist_ok=True)
         self._series = defaultdict(lambda: ([], []))   # tag -> (steps, values)
         self._lock = threading.Lock()
@@ -55,8 +59,7 @@ class TBPlotWriter(SummaryWriter):
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
 
-    def add_scalar(self, tag, scalar_value, global_step=None, *args, **kwargs):
-        super().add_scalar(tag, scalar_value, global_step, *args, **kwargs)
+    def _record(self, tag, scalar_value, global_step):
         try:
             v = float(scalar_value)
             with self._lock:
@@ -117,10 +120,25 @@ class TBPlotWriter(SummaryWriter):
             ax.tick_params(labelsize=6)
         for j in range(n, rows * cols):
             axes[j // cols][j % cols].axis("off")
-        fig.suptitle("mybot balance — training metrics (live)", fontsize=12)
+        fig.suptitle("mybot — training metrics (live)", fontsize=12)
         fig.tight_layout(rect=(0, 0, 1, 0.97))
         fig.savefig(os.path.join(self.graph_dir, "_overview.png"))
         plt.close(fig)
+
+
+class TBPlotWriter(_PlotMixin):
+    """A drop-in SummaryWriter (real TensorBoard event files) that ALSO exports live
+    PNG graphs. Needs torch; imported lazily so this module stays importable without
+    torch (see PngPlotWriter, used by the torch-free JAX/MJX trainer)."""
+
+    def __init__(self, log_dir=None, graph_dir=None, refresh_sec=20.0, **kwargs):
+        from torch.utils.tensorboard import SummaryWriter
+        self._tb = SummaryWriter(log_dir=log_dir, **kwargs)
+        self._init_plotting(graph_dir or os.path.join(log_dir or ".", "graphs"), refresh_sec)
+
+    def add_scalar(self, tag, scalar_value, global_step=None, *args, **kwargs):
+        self._tb.add_scalar(tag, scalar_value, global_step, *args, **kwargs)
+        self._record(tag, scalar_value, global_step)
 
     def close(self):
         self._stop.set()
@@ -128,4 +146,22 @@ class TBPlotWriter(SummaryWriter):
             self.render()
         except Exception:
             pass
-        super().close()
+        self._tb.close()
+
+
+class PngPlotWriter(_PlotMixin):
+    """Same add_scalar/render/close API as TBPlotWriter, PNG graphs only, no torch —
+    for trainers running in an env without torch installed (mjx_ppo.py / mybot_mjx)."""
+
+    def __init__(self, graph_dir, refresh_sec=20.0):
+        self._init_plotting(graph_dir, refresh_sec)
+
+    def add_scalar(self, tag, scalar_value, global_step=None, *args, **kwargs):
+        self._record(tag, scalar_value, global_step)
+
+    def close(self):
+        self._stop.set()
+        try:
+            self.render()
+        except Exception:
+            pass

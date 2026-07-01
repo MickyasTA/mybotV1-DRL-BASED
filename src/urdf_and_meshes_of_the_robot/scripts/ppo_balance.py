@@ -390,6 +390,7 @@ def train(args):
                                      ep_eff_sum / max(steps_ep, 1), global_step, time.time())
                 if writer:
                     writer.add_scalar("episode/score", score, total_episodes)
+                    writer.add_scalar("episode/reward", score, total_episodes)
                     writer.add_scalar("episode/steps", steps_ep, total_episodes)
                     writer.add_scalar("episode/duration", dur, total_episodes)
                     writer.add_scalar("episode/mean_tilt_deg",

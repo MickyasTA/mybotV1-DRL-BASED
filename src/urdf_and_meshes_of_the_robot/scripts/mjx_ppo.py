@@ -11,6 +11,15 @@ GPU stack, then goal-nav once mjx_env grows a nav mode.
 
   MUJOCO_GL=osmesa XLA_PYTHON_CLIENT_MEM_FRACTION=0.6 \
     python mjx_ppo.py --total-timesteps 3000000 --run-dir <run>
+
+Results layout matches ppo_balance.py / ppo_parallel.py (the "standard", see CLAUDE.md),
+minus the TensorBoard event files (this trainer runs in the isolated mybot_mjx conda env,
+which has no torch -> PngPlotWriter gives the same live PNG graphs without it):
+    <run_dir>/model_episode_<N>.pkl, model_best.pkl, model_final.pkl, model_latest.pkl
+    <run_dir>/videos/                       <- populate via mjx_render.py / mujoco_view.py
+    <run_dir>/metrics/episodes_<sess>.csv   <- one row per completed episode
+    <run_dir>/metrics/summary_<sess>.json
+    <run_dir>/metrics/graphs/               <- live PNG per scalar + _overview.png
 """
 import os, time, argparse, pickle
 from typing import NamedTuple
@@ -21,6 +30,13 @@ import flax.linen as nn
 import optax
 
 import mjx_env as E
+
+try:
+    from tb_plot_writer import PngPlotWriter
+    from metrics_logger import MetricsLogger
+    _HAVE_METRICS = True
+except Exception:
+    _HAVE_METRICS = False
 
 
 class ActorCritic(nn.Module):
@@ -145,6 +161,39 @@ def make_train(args):
     return net, optim, rollout_jit, gae_jit, mb_step
 
 
+def _episode_rows(traj, ep_ret, ep_len, ep_cnt):
+    """Extract per-completed-episode metrics from this iteration's rollout, for CSV/TB
+    logging in the same schema as ppo_balance.py / ppo_parallel.py. ep_ret/ep_len/ep_cnt
+    come out of the scan with shape (T, N) -- one slot per (rollout step, env); nonzero
+    where THAT env's episode ended on THAT step (an env can complete more than one
+    episode within a single T-step rollout window early in training, when ep_len < T).
+    tilt/effort are a WINDOWED proxy (mean/max over this iteration's T-step rollout for
+    that env), not the full episode -- MJX's scanned rollout only keeps a short in-flight
+    window per iteration, so a true full-episode trace isn't available without threading
+    extra state through the compiled scan body."""
+    ep_cnt_np = np.asarray(ep_cnt)                            # (T, N)
+    tt, nn = np.nonzero(ep_cnt_np > 0.5)
+    if tt.size == 0:
+        return []
+    ret_np, len_np = np.asarray(ep_ret), np.asarray(ep_len)   # (T, N)
+    obs = np.asarray(traj.obs)                                # (T, N, OBS_DIM)
+    roll, pitch = obs[..., -E.FRAME_DIM], obs[..., -E.FRAME_DIM + 1]
+    tilt_deg = np.degrees(np.hypot(roll, pitch))               # (T, N)
+    act = np.abs(np.asarray(traj.action))                      # (T, N, ACT_DIM)
+    mean_tilt_env, max_tilt_env = tilt_deg.mean(axis=0), tilt_deg.max(axis=0)   # (N,)
+    mean_eff_env = act.mean(axis=(0, 2))                                        # (N,)
+    ctrl_dt = E.SIM_DT * E.N_SUB
+    rows = []
+    for t, i in zip(tt, nn):
+        steps = int(len_np[t, i])
+        rows.append(dict(
+            score=float(ret_np[t, i]), steps=steps, duration=float(steps * ctrl_dt),
+            fell=bool(steps < E.MAX_STEPS),
+            mean_tilt_deg=float(mean_tilt_env[i]), max_tilt_deg=float(max_tilt_env[i]),
+            mean_effort=float(mean_eff_env[i])))
+    return rows
+
+
 def train(args):
     global E
     if args.env == "nav":
@@ -165,8 +214,21 @@ def train(args):
     B = steps_per_iter
     mb_size = B // args.minibatches
 
-    os.makedirs(args.run_dir, exist_ok=True)
-    logf = open(os.path.join(args.run_dir, "train.log"), "w")
+    # ---- run-folder output layout (mirrors ppo_balance.py, see CLAUDE.md) ----
+    session_id = args.session_id or time.strftime("%Y%m%d_%H%M%S")
+    run_dir = args.run_dir
+    metrics_dir = os.path.join(run_dir, "metrics")
+    graphs_dir = os.path.join(metrics_dir, "graphs")
+    videos_dir = os.path.join(run_dir, "videos")
+    for d in (run_dir, metrics_dir, graphs_dir, videos_dir):
+        os.makedirs(d, exist_ok=True)
+
+    writer = PngPlotWriter(graphs_dir) if _HAVE_METRICS and args.tensorboard else None
+    mlog = MetricsLogger(metrics_dir, session_id) if _HAVE_METRICS else None
+    if mlog:
+        mlog.set_start_time(time.time())
+
+    logf = open(os.path.join(run_dir, "train.log"), "w")
 
     def log(s):
         print(s); logf.write(s + "\n"); logf.flush()
@@ -175,7 +237,7 @@ def train(args):
         f"obs={E.OBS_DIM} act={E.ACT_DIM} backend={jax.default_backend()}")
     best = -1e9
     t0 = time.time()
-    gstep = 0
+    gstep, total_episodes, _last_ckpt_ep = 0, 0, 0
     for it in range(n_iters):
         carry, traj, last_value, (ep_ret, ep_len, ep_cnt) = rollout_jit(params, rms, carry)
         advs, returns = gae_jit(traj, last_value)
@@ -200,15 +262,48 @@ def train(args):
         mret = float(ep_ret.sum() / max(cnt, 1.0))
         mlen = float(ep_len.sum() / max(cnt, 1.0))
         sps = gstep / (time.time() - t0)
+
+        # per-completed-episode CSV row + TB scalars (same schema as ppo_balance.py)
+        for row in _episode_rows(traj, ep_ret, ep_len, ep_cnt):
+            total_episodes += 1
+            if mlog:
+                mlog.log_episode(total_episodes, row["score"], row["steps"], row["duration"],
+                                 row["fell"], row["mean_tilt_deg"], row["max_tilt_deg"],
+                                 row["mean_effort"], gstep, time.time())
+            if writer:
+                writer.add_scalar("episode/score", row["score"], total_episodes)
+                writer.add_scalar("episode/reward", row["score"], total_episodes)
+                writer.add_scalar("episode/steps", row["steps"], total_episodes)
+                writer.add_scalar("episode/duration", row["duration"], total_episodes)
+                writer.add_scalar("episode/mean_tilt_deg", row["mean_tilt_deg"], total_episodes)
+        if writer:
+            writer.add_scalar("charts/ep_rew_mean", mret, gstep)
+            writer.add_scalar("charts/ep_len_mean", mlen, gstep)
+            writer.add_scalar("loss/policy", float(aux[0]), gstep)
+            writer.add_scalar("loss/value", float(aux[1]), gstep)
+            writer.add_scalar("loss/entropy", float(aux[2]), gstep)
+            writer.add_scalar("loss/kl", kl, gstep)
+            writer.add_scalar("charts/sps", sps, gstep)
+
         if it % 5 == 0 or it == n_iters - 1:
             log(f"it {it:4d}/{n_iters}  step {gstep:9d}  ep_rew {mret:8.2f}  "
                 f"ep_len {mlen:7.1f}  kl {kl:.3f}  {sps:,.0f} steps/s")
         if mret > best and cnt > 0:
             best = mret
-            _save(params, rms, args, os.path.join(args.run_dir, "model_best.pkl"))
+            _save(params, rms, args, os.path.join(run_dir, "model_best.pkl"))
         if it % 25 == 0:
-            _save(params, rms, args, os.path.join(args.run_dir, "model_latest.pkl"))
-    _save(params, rms, args, os.path.join(args.run_dir, "model_final.pkl"))
+            _save(params, rms, args, os.path.join(run_dir, "model_latest.pkl"))
+            if mlog:
+                mlog.write_summary(time.time(), total_episodes)
+        # decoupled numbered checkpoint every --checkpoint-every EPISODES (not iterations)
+        if total_episodes >= _last_ckpt_ep + args.checkpoint_every:
+            _last_ckpt_ep = (total_episodes // args.checkpoint_every) * args.checkpoint_every
+            _save(params, rms, args, os.path.join(run_dir, f"model_episode_{total_episodes}.pkl"))
+    _save(params, rms, args, os.path.join(run_dir, "model_final.pkl"))
+    if mlog:
+        mlog.write_summary(time.time(), total_episodes)
+    if writer:
+        writer.close()
     log(f"[mjx-ppo] done. best ep_rew={best:.2f}  total {time.time()-t0:.0f}s")
 
 
@@ -241,4 +336,9 @@ if __name__ == "__main__":
     p.add_argument("--env", choices=["balance", "nav"], default="balance")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--run-dir", default="../../../training_results/mjx_balance1")
+    p.add_argument("--session-id", default="", help="metrics session id (empty -> timestamp)")
+    p.add_argument("--checkpoint-every", type=int, default=200,
+                   help="checkpoint cadence in EPISODES (model_episode_<N>.pkl)")
+    p.add_argument("--tensorboard", action="store_true", default=True,
+                   help="write metrics/graphs/ live PNGs (PngPlotWriter, no torch needed)")
     train(p.parse_args())

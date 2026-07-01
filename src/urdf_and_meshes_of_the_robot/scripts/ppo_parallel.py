@@ -10,8 +10,17 @@ update ratio). No RL library. Checkpoints are mujoco_view.py-compatible.
 
 For GPU acceleration on a bigger machine use the MJX path instead (mjx_ppo.py) — kept as
 a flag for desktop 4090 / cloud A100 where MJX's throughput wins.
+
+Results layout matches ppo_balance.py exactly (the "standard", see CLAUDE.md):
+    <run_dir>/model_episode_<N>.pth, model_best.pth, model_final.pth, model_latest.pth
+    <run_dir>/videos/                       <- populate via mujoco_view.py --record
+    <run_dir>/metrics/episodes_<sess>.csv   <- one row per completed episode (any env)
+    <run_dir>/metrics/summary_<sess>.json
+    <run_dir>/metrics/runs/<sess>/          <- TensorBoard event files
+    <run_dir>/metrics/graphs/               <- live PNG per scalar + _overview.png
 """
 import os
+import math
 import time
 import argparse
 from collections import deque
@@ -26,6 +35,13 @@ import sys
 sys.path.insert(0, _HERE)
 from ppo_balance import ActorCritic, RunningMeanStd     # noqa: E402
 from vec_env import SubprocVecEnv                         # noqa: E402
+
+try:
+    from tb_plot_writer import TBPlotWriter
+    from metrics_logger import MetricsLogger
+    _HAVE_METRICS = True
+except Exception:
+    _HAVE_METRICS = False
 
 
 def train(args):
@@ -51,8 +67,23 @@ def train(args):
     rw = torch.zeros((T, N), device=dev)
     dn = torch.zeros((T, N), device=dev)
 
-    os.makedirs(args.run_dir, exist_ok=True)
-    logf = open(os.path.join(args.run_dir, "train.log"), "w")
+    # ---- run-folder output layout (mirrors ppo_balance.py exactly, see CLAUDE.md) ----
+    session_id = args.session_id or time.strftime("%Y%m%d_%H%M%S")
+    run_dir = args.run_dir
+    metrics_dir = os.path.join(run_dir, "metrics")
+    graphs_dir = os.path.join(metrics_dir, "graphs")
+    videos_dir = os.path.join(run_dir, "videos")
+    tb_dir = os.path.join(metrics_dir, "runs", session_id)
+    for d in (run_dir, metrics_dir, graphs_dir, videos_dir, tb_dir):
+        os.makedirs(d, exist_ok=True)
+
+    writer = TBPlotWriter(log_dir=tb_dir, graph_dir=graphs_dir) \
+        if _HAVE_METRICS and args.tensorboard else None
+    mlog = MetricsLogger(metrics_dir, session_id) if _HAVE_METRICS else None
+    if mlog:
+        mlog.set_start_time(time.time())
+
+    logf = open(os.path.join(run_dir, "train.log"), "w")
 
     def log(s):
         print(s); logf.write(s + "\n"); logf.flush()
@@ -67,7 +98,10 @@ def train(args):
     obs_rms.update(raw)
     obs = torch.as_tensor(obs_rms.normalize(raw), device=dev)
     ep_ret = np.zeros(N); ep_len = np.zeros(N)
+    ep_tilt_sum = np.zeros(N); ep_tilt_max = np.zeros(N); ep_eff_sum = np.zeros(N)
+    ep_wall0 = np.full(N, time.time())
     rets, lens = deque(maxlen=200), deque(maxlen=200)
+    total_episodes, _last_ckpt_ep = 0, 0
 
     num_updates = args.total_timesteps // B
     best, gstep, t0 = -1e9, 0, time.time()
@@ -85,7 +119,8 @@ def train(args):
                 lg[t] = dist.log_prob(action).sum(-1)
                 vl[t] = agent.critic(obs).squeeze(-1)
             a[t] = action
-            raw, rew, term, trunc, infos = envs.step(action.cpu().numpy())
+            act_np = action.cpu().numpy()
+            raw, rew, term, trunc, infos = envs.step(act_np)
             done = np.logical_or(term, trunc)
             # reward normalization (per-env discounted-return std)
             ret = ret * args.gamma + rew
@@ -95,9 +130,30 @@ def train(args):
             ret[done] = 0.0
             dn[t] = torch.as_tensor(done.astype(np.float32), device=dev)
             ep_ret += rew; ep_len += 1
+            # per-episode tilt/effort accumulation (for MetricsLogger, mirrors ppo_balance.py)
+            tilt_deg = np.array([math.degrees(info.get("tilt", 0.0)) for info in infos])
+            ep_tilt_sum += tilt_deg
+            ep_tilt_max = np.maximum(ep_tilt_max, tilt_deg)
+            ep_eff_sum += np.mean(np.abs(act_np), axis=1)
             for i in np.nonzero(done)[0]:
                 rets.append(ep_ret[i]); lens.append(ep_len[i])
+                total_episodes += 1
+                if mlog:
+                    mlog.log_episode(total_episodes, float(ep_ret[i]), int(ep_len[i]),
+                                     time.time() - ep_wall0[i], bool(term[i]),
+                                     ep_tilt_sum[i] / max(ep_len[i], 1), ep_tilt_max[i],
+                                     ep_eff_sum[i] / max(ep_len[i], 1), gstep, time.time())
+                if writer:
+                    writer.add_scalar("episode/score", float(ep_ret[i]), total_episodes)
+                    writer.add_scalar("episode/reward", float(ep_ret[i]), total_episodes)
+                    writer.add_scalar("episode/steps", int(ep_len[i]), total_episodes)
+                    writer.add_scalar("episode/duration", time.time() - ep_wall0[i],
+                                      total_episodes)
+                    writer.add_scalar("episode/mean_tilt_deg",
+                                      ep_tilt_sum[i] / max(ep_len[i], 1), total_episodes)
                 ep_ret[i] = 0.0; ep_len[i] = 0.0
+                ep_tilt_sum[i] = ep_tilt_max[i] = ep_eff_sum[i] = 0.0
+                ep_wall0[i] = time.time()
             obs_rms.update(raw)
             obs = torch.as_tensor(obs_rms.normalize(raw), device=dev)
             gstep += N
@@ -116,7 +172,7 @@ def train(args):
         bo, ba = o.reshape(B, obs_dim), a.reshape(B, act_dim)
         blg, badv, bret, bval = lg.reshape(B), adv.reshape(B), rets_t.reshape(B), vl.reshape(B)
         idx = np.arange(B)
-        kl = 0.0
+        kl, pg_loss, v_loss, ent_val = 0.0, 0.0, 0.0, 0.0
         for epoch in range(args.epochs):
             np.random.shuffle(idx)
             for s in range(0, B, mb):
@@ -139,6 +195,7 @@ def train(args):
                 opt.zero_grad(); loss.backward()
                 nn.utils.clip_grad_norm_(agent.parameters(), 0.5)
                 opt.step()
+                pg_loss, v_loss, ent_val = pg.item(), vloss.item(), ent.item()
             with torch.no_grad():
                 kl = float(((ratio - 1) - logratio).mean())
             if args.target_kl and kl > args.target_kl:
@@ -147,18 +204,36 @@ def train(args):
         mret = float(np.mean(rets)) if rets else 0.0
         mlen = float(np.mean(lens)) if lens else 0.0
         sps = gstep / (time.time() - t0)
+        if writer:
+            writer.add_scalar("charts/ep_rew_mean", mret, gstep)
+            writer.add_scalar("charts/ep_len_mean", mlen, gstep)
+            writer.add_scalar("loss/policy", pg_loss, gstep)
+            writer.add_scalar("loss/value", v_loss, gstep)
+            writer.add_scalar("loss/entropy", ent_val, gstep)
+            writer.add_scalar("loss/kl", kl, gstep)
+            writer.add_scalar("charts/sps", sps, gstep)
         if update % 10 == 0 or update == num_updates - 1:
             log(f"upd {update:4d}/{num_updates}  step {gstep:9d}  ep_rew {mret:8.2f}  "
                 f"ep_len {mlen:7.1f}  kl {kl:.3f}  {sps:,.0f} steps/s")
         if rets and mret > best:
             best = mret
             _save(agent, obs_rms, args, obs_dim, act_dim,
-                  os.path.join(args.run_dir, "model_best.pth"))
+                  os.path.join(run_dir, "model_best.pth"))
         if update % 20 == 0:
             _save(agent, obs_rms, args, obs_dim, act_dim,
-                  os.path.join(args.run_dir, "model_latest.pth"))
-    _save(agent, obs_rms, args, obs_dim, act_dim,
-          os.path.join(args.run_dir, "model_final.pth"))
+                  os.path.join(run_dir, "model_latest.pth"))
+            if mlog:
+                mlog.write_summary(time.time(), total_episodes)
+        # decoupled numbered checkpoint every --checkpoint-every EPISODES (not updates)
+        if total_episodes >= _last_ckpt_ep + args.checkpoint_every:
+            _last_ckpt_ep = (total_episodes // args.checkpoint_every) * args.checkpoint_every
+            _save(agent, obs_rms, args, obs_dim, act_dim,
+                  os.path.join(run_dir, f"model_episode_{total_episodes}.pth"))
+    _save(agent, obs_rms, args, obs_dim, act_dim, os.path.join(run_dir, "model_final.pth"))
+    if mlog:
+        mlog.write_summary(time.time(), total_episodes)
+    if writer:
+        writer.close()
     envs.close()
     log(f"[ppo-par] done. best ep_rew={best:.2f}  {time.time()-t0:.0f}s")
 
@@ -189,4 +264,8 @@ if __name__ == "__main__":
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--run-dir", default="../../../training_results/par1")
     p.add_argument("--load", default=None, help="warm-start checkpoint (same obs/act dims)")
+    p.add_argument("--session-id", default="", help="metrics session id (empty -> timestamp)")
+    p.add_argument("--checkpoint-every", type=int, default=200,
+                   help="checkpoint cadence in EPISODES (model_episode_<N>.pth)")
+    p.add_argument("--tensorboard", action="store_true", default=True)
     train(p.parse_args())

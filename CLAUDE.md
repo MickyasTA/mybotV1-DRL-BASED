@@ -74,7 +74,41 @@ The all‑in‑one resilient launcher used during development is `~/mybot_train_
    (`TimerAction`) to avoid "Spawn service failed", but it can still race intermittently —
    the resilient wrapper retries.
 
+## STANDARD RESULTS LAYOUT — every trainer records EVERY run like this
+The user considers this layout (as produced for `training_results/mujoco_run2`) the
+standard. **Any new trainer / training stage MUST write the same structure** — never
+just a bare model file + train.log:
+
+```
+<run_dir>/
+├── model_best.(pth|pkl)        ← best policy so far (viewer hot-reloads this)
+├── model_latest.(pth|pkl)      ← frequent resume copy
+├── model_episode_<N>.(pth|pkl) ← numbered ckpt every --checkpoint-every EPISODES
+├── model_final.(pth|pkl)       ← end of training
+├── train.log
+├── videos/                     ← clips (mujoco_view.py --record / recorders)
+└── metrics/
+    ├── episodes_<session>.csv  ← one row per episode: episode,score,steps,duration,
+    │                             fell,mean_tilt_deg,max_tilt_deg,mean_effort,
+    │                             global_step,timestamp   (metrics_logger.py)
+    ├── summary_<session>.json  ← session_info + performance_metrics + recent
+    ├── runs/<session>/         ← TensorBoard events (torch trainers only)
+    └── graphs/                 ← LIVE PNGs: one per scalar + _overview.png,
+                                  incl. episode__score/reward/steps/duration/
+                                  mean_tilt_deg, charts__ep_rew/len_mean, sps,
+                                  loss__policy/value/entropy/kl (tb_plot_writer.py)
+```
+
+Shared pieces (reuse, don't reimplement): `metrics_logger.py` (CSV+JSON),
+`tb_plot_writer.py` — `TBPlotWriter` (TB events + PNGs, needs torch) for
+`ppo_balance.py`/`ppo_parallel.py`, `PngPlotWriter` (PNGs only, torch-free) for
+`mjx_ppo.py` in the `mybot_mjx` env (which has matplotlib but NO torch). MJX `.pkl`
+checkpoints must be pickled as **plain lists** (numpy-version-portable — see
+`mjx_pkl_fix.py` for the one-off converter for old files).
+
 ## Conventions
 - No commit attribution (no Co‑Authored‑By/Claude/Anthropic).
 - Don't touch `../collision_avoidance_system` (reference only).
 - Keep scripts consolidated; don't scatter new files.
+- Checkpoints: PyTorch trainers save `.pth`; the JAX/MJX trainer saves `.pkl`.
+  `mujoco_view.py` auto-detects both and hot-reloads `model_best` while training.
