@@ -52,12 +52,10 @@
       <update_rate>50.0</update_rate>
     </plugin>
 
-    <!-- NOTE: a Gazebo camera sensor was tried here to record REAL Gazebo footage,
-         but Gazebo's OGRE renderer cannot render this robot's STL meshes on WSL
-         (the camera renders primitives fine but produces no image once an STL mesh
-         is in the scene — the same limitation that crashes gzclient). Milestone
-         videos are therefore rendered from the true robot pose by record_episode.py
-         (matplotlib triangle rendering of the STL meshes), which works on WSL. -->
+    <!-- periodic_recorder.py spawns a temporary overhead camera entity into the LIVE
+         world (after gzserver + the robot are up) to record real Gazebo footage, then
+         deletes it. Run gzserver with the WSLg display (DISPLAY=:0) so the spawned
+         camera has a GPU OGRE context. -->
 
   </world>
 </sdf>

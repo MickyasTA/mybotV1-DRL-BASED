@@ -60,6 +60,12 @@ KNEE_JOINTS = ["Lower_left_joint", "Lower_right_joint"]
 JOINT_ORDER = WHEEL_JOINTS + HIP_JOINTS + KNEE_JOINTS   # 10 joints
 # Legs handled by the JointTrajectoryController — order MUST match leg_traj_controller.joints
 LEG_JOINTS = HIP_JOINTS + KNEE_JOINTS                   # 8 joints
+# Per-joint PD gains for the EFFORT hold of the 8 leg joints (stage-1 rigid stance).
+# Effort is the only sim path that develops real holding torque for these load-bearing
+# chained joints (position/position_pid interfaces teleport/fail to hold in Gazebo Classic).
+LEG_KP = 400.0
+LEG_KD = 20.0
+LEG_EFFORT_MAX = 200.0   # clamp; must be <= the leg joint <limit effort> in the URDF
 
 SRV_PAUSE = "/pause_physics"
 SRV_UNPAUSE = "/unpause_physics"
@@ -205,11 +211,13 @@ class BalanceEnv(gym.Env):
 
         self.wheel_pub = self.node.create_publisher(
             Float64MultiArray, "/wheel_effort_controller/commands", 10)
-        # The 8 leg joints are now FREE (revolute) but held at the zero stance by a
-        # JointGroupPositionController so the robot stands on its wheels (stage 1).
-        # Stage 2+ will command non-zero leg targets here to walk / climb.
+        # The 8 leg joints are FREE (revolute) and SEPARATELY CONTROLLED: the env holds
+        # each at the zero stance with a per-joint PD -> EFFORT command (JointGroupEffort
+        # Controller). Effort is the only sim path that develops real holding torque for
+        # these load-bearing chained joints. Stage 2+ can replace the PD hold with
+        # RL-commanded leg efforts to walk / climb.
         self.leg_pub = self.node.create_publisher(
-            Float64MultiArray, "/leg_position_controller/commands", 10)
+            Float64MultiArray, "/leg_effort_controller/commands", 10)
         self.n_leg = len(LEG_JOINTS)   # 8 (3-DOF hip + knee per leg)
 
         self.node.create_subscription(JointState, "/joint_states", self._joint_cb, sensor_qos)
@@ -354,11 +362,14 @@ class BalanceEnv(gym.Env):
         self.wheel_pub.publish(Float64MultiArray(data=[float(x) for x in tau]))
 
     def _hold_legs(self):
-        # Stage 1: hold all 8 leg joints at the zero stance via the position
-        # controller so the robot stands on its wheels. (Stage 2 will replace these
-        # zeros with RL-commanded leg targets to walk/climb.) All-zeros, so the
-        # command order vs the controller's joint list does not matter here.
-        self.leg_pub.publish(Float64MultiArray(data=[0.0] * self.n_leg))
+        # Stage 1: hold each leg joint at the zero stance with a per-joint PD that
+        # outputs an EFFORT (torque) -> a real physics hold (SetForce), so the legs
+        # stay rigid and the robot is a proper inverted pendulum on its wheels.
+        # Command order MUST match config/controllers.yaml leg_effort_controller.joints
+        # (== LEG_JOINTS).
+        pos, vel = self._joint_pv(LEG_JOINTS)
+        tau = np.clip(-LEG_KP * pos - LEG_KD * vel, -LEG_EFFORT_MAX, LEG_EFFORT_MAX)
+        self.leg_pub.publish(Float64MultiArray(data=[float(x) for x in tau]))
 
     def _command_zero(self):
         self._command_wheels(np.zeros(self.n_wheel, dtype=np.float32))

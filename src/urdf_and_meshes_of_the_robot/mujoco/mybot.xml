@@ -1,0 +1,153 @@
+<mujoco model="urdf_and_meshes_of_the_robot">
+  <compiler angle="radian" meshdir="/mnt/c/Users/mtasfaw/Documents/personal/mybotV1-DRL-BASED/src/urdf_and_meshes_of_the_robot/meshes/"/>
+
+  <option integrator="implicitfast" cone="elliptic"/>
+
+  <size nkey="1"/>
+
+  <visual>
+    <global offwidth="1280" offheight="720"/>
+  </visual>
+
+  <asset>
+    <mesh name="BODY_link" file="BODY_link.STL"/>
+    <mesh name="Upper_left_leg" file="Upper_left_leg.STL"/>
+    <mesh name="Lower_left_leg" file="Lower_left_leg.STL"/>
+    <mesh name="Upper_right_link" file="Upper_right_link.STL"/>
+    <mesh name="Lower_right_link" file="Lower_right_link.STL"/>
+    <mesh name="lidar_link" file="lidar_link.STL"/>
+    <mesh name="camera_link" file="camera_link.STL"/>
+    <mesh name="IMU_link" file="IMU_link.STL"/>
+  </asset>
+
+  <worldbody>
+    <geom name="floor" size="0 0 0.1" type="plane" rgba="0.5 0.5 0.55 1"/>
+    <light pos="0 0 3" dir="0 0 -1" specular="0.1 0.1 0.1"/>
+    <!-- external 3/4 view that always frames the robot (used by the recorder) -->
+    <camera name="track" pos="0.95 -0.95 0.75" mode="targetbody" target="base_link"/>
+    <body name="base_link" pos="0 0 0.52">
+      <joint name="root" type="free"/>
+      <body name="BODY_link">
+        <inertial pos="0 0.0022646 -0.021333" quat="0.515796 0.483689 -0.483689 0.515796" mass="1.25697" diaginertia="0.00638137 0.0045914 0.00427733"/>
+        <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.89804 0.91765 0.92941 1" mesh="BODY_link"/>
+        <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="BODY_link"/>
+        <body name="hip_yaw_link_left" pos="0.065 -0.0025 -0.055">
+          <inertial pos="0 0 0" mass="0.12" diaginertia="0.0001 0.0001 0.0001"/>
+          <joint name="hip_yaw_left" pos="0 0 0" axis="0 0 1" range="-0.785 0.785" actuatorfrcrange="-200 200" armature="0.01" damping="1" frictionloss="0.2"/>
+          <geom size="0.02 0.0225" type="cylinder" contype="0" conaffinity="0" group="1" density="0" rgba="0.25 0.25 0.27 1"/>
+          <body name="hip_roll_link_left">
+            <inertial pos="0 0 0" mass="0.12" diaginertia="0.0001 0.0001 0.0001"/>
+            <joint name="hip_roll_left" pos="0 0 0" axis="1 0 0" range="-0.785 0.785" actuatorfrcrange="-200 200" armature="0.01" damping="1" frictionloss="0.2"/>
+            <geom size="0.02 0.0225" quat="0.707105 0 0.707108 0" type="cylinder" contype="0" conaffinity="0" group="1" density="0" rgba="0.25 0.25 0.27 1"/>
+            <body name="Upper_left_leg" quat="0.339684 0.620172 0.339689 0.620172">
+              <inertial pos="6.6396e-09 -0.10715 0.021958" quat="0.500419 0.499574 -0.499581 0.500425" mass="0.32627" diaginertia="0.00222141 0.0021991 4.28908e-05"/>
+              <joint name="Upper_left_joint" pos="0 0 0" axis="0 0 -1" range="-1.57 1.57" actuatorfrcrange="-200 200" armature="0.01" damping="1" frictionloss="0.2"/>
+              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.29804 0.29804 0.29804 1" mesh="Upper_left_leg"/>
+              <geom type="mesh" rgba="0.29804 0.29804 0.29804 1" mesh="Upper_left_leg"/>
+              <body name="Lower_left_leg" pos="0 -0.24941 0.032" quat="0.79946 0 0 -0.600719">
+                <inertial pos="3.3987e-08 -0.095731 0.0075383" quat="0.500194 0.499818 -0.499806 0.500182" mass="0.20779" diaginertia="0.0010151 0.0010103 1.24204e-05"/>
+                <joint name="Lower_left_joint" pos="0 0 0" axis="0 0 1" range="-1.57 1.57" actuatorfrcrange="-200 200" armature="0.01" damping="1" frictionloss="0.2"/>
+                <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.29804 0.29804 0.29804 1" mesh="Lower_left_leg"/>
+                <geom type="mesh" rgba="0.29804 0.29804 0.29804 1" mesh="Lower_left_leg"/>
+                <body name="Left_wheel" pos="0 -0.22885 0.015" quat="-3.37036e-06 0.917553 0.397614 -1.46052e-06">
+                  <inertial pos="7.526e-08 -9.4982e-08 -0.021914" quat="0.653281 0.270598 -0.653281 0.270598" mass="0.12382" diaginertia="0.0003757 0.00019918 0.00019918"/>
+                  <joint name="Left_joint" pos="0 0 0" axis="0 0 1" range="-1.57 1.57" actuatorfrcrange="-200 200" armature="0.005" damping="0.1" frictionloss="0.05"/>
+                  <geom size="0.0826 0.0211" type="cylinder" contype="0" conaffinity="0" group="1" friction="1.2 0.01" density="0" rgba="0.29804 0.29804 0.29804 1"/>
+                  <geom size="0.0826 0.0211" pos="0 0 -0.0211" type="cylinder" friction="1.2 0.01" rgba="0.29804 0.29804 0.29804 1"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+        <body name="hip_yaw_link_right" pos="-0.065 -0.0025 -0.055">
+          <inertial pos="0 0 0" mass="0.12" diaginertia="0.0001 0.0001 0.0001"/>
+          <joint name="hip_yaw_right" pos="0 0 0" axis="0 0 1" range="-0.785 0.785" actuatorfrcrange="-200 200" armature="0.01" damping="1" frictionloss="0.2"/>
+          <geom size="0.02 0.0225" type="cylinder" contype="0" conaffinity="0" group="1" density="0" rgba="0.25 0.25 0.27 1"/>
+          <body name="hip_roll_link_right">
+            <inertial pos="0 0 0" mass="0.12" diaginertia="0.0001 0.0001 0.0001"/>
+            <joint name="hip_roll_right" pos="0 0 0" axis="1 0 0" range="-0.785 0.785" actuatorfrcrange="-200 200" armature="0.01" damping="1" frictionloss="0.2"/>
+            <geom size="0.02 0.0225" quat="0.707105 0 0.707108 0" type="cylinder" contype="0" conaffinity="0" group="1" density="0" rgba="0.25 0.25 0.27 1"/>
+            <body name="Upper_right_link" quat="0.331122 0.624785 -0.331126 -0.624785">
+              <inertial pos="9.6623e-09 -0.10715 0.021958" quat="0.500419 0.499574 -0.499581 0.500425" mass="0.32627" diaginertia="0.00222141 0.0021991 4.28908e-05"/>
+              <joint name="Upper_right_joint" pos="0 0 0" axis="0 0 1" range="-1.57 1.57" actuatorfrcrange="-200 200" armature="0.01" damping="1" frictionloss="0.2"/>
+              <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.29804 0.29804 0.29804 1" mesh="Upper_right_link"/>
+              <geom type="mesh" rgba="0.29804 0.29804 0.29804 1" mesh="Upper_right_link"/>
+              <body name="Lower_right_link" pos="0 -0.24941 0.034" quat="0.793231 0 0 0.608921">
+                <inertial pos="3.29e-08 -0.095731 0.0075383" quat="0.500194 0.499818 -0.499806 0.500182" mass="0.20779" diaginertia="0.0010151 0.0010103 1.24204e-05"/>
+                <joint name="Lower_right_joint" pos="0 0 0" axis="0 0 1" range="-1.57 1.57" actuatorfrcrange="-200 200" armature="0.01" damping="1" frictionloss="0.2"/>
+                <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.29804 0.29804 0.29804 1" mesh="Lower_right_link"/>
+                <geom type="mesh" rgba="0.29804 0.29804 0.29804 1" mesh="Lower_right_link"/>
+                <body name="Right_wheel" pos="0 -0.22885 0.015" quat="-3.59294e-06 0.97815 0.207902 -7.63668e-07">
+                  <inertial pos="2.9114e-08 -9.5306e-09 -0.021914" quat="0.653281 0.270598 -0.653281 0.270598" mass="0.12382" diaginertia="0.0003757 0.00019918 0.00019918"/>
+                  <joint name="Right_joint" pos="0 0 0" axis="0 0 1" armature="0.005" damping="0.1" frictionloss="0.05"/>
+                  <geom size="0.0826 0.0211" type="cylinder" contype="0" conaffinity="0" group="1" friction="1.2 0.01" density="0" rgba="0.29804 0.29804 0.29804 1"/>
+                  <geom size="0.0826 0.0211" pos="0 0 -0.0211" type="cylinder" friction="1.2 0.01" rgba="0.29804 0.29804 0.29804 1"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+        <body name="lidar_link" pos="0.0118365 4.41245e-05 0.0326713" quat="0.707107 0.707107 0 0">
+          <inertial pos="-0.00748254 0.010665 9.18485e-05" quat="0.563362 0.570496 0.417593 0.42752" mass="0.0239829" diaginertia="5.58288e-06 4.68159e-06 2.76657e-06"/>
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.298039 0.298039 0.298039 1" mesh="lidar_link"/>
+          <geom type="mesh" rgba="0.298039 0.298039 0.298039 1" mesh="lidar_link"/>
+        </body>
+        <body name="camera_link" pos="0 -0.0868463 0.00105377" quat="0.500398 0.5 -0.499602 -0.5">
+          <inertial pos="-1.00992e-09 0.000394686 0.00613911" quat="0.688517 0.161073 -0.161073 0.688517" mass="0.00182332" diaginertia="5.10662e-08 4.92416e-08 4.22972e-08"/>
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.298039 0.298039 0.298039 1" mesh="camera_link"/>
+          <geom type="mesh" rgba="0.298039 0.298039 0.298039 1" mesh="camera_link"/>
+          <body name="camera_link_optical" quat="0.5 -0.5 0.5 -0.5"/>
+        </body>
+        <body name="IMU_link" pos="0 0 0.025" quat="0.707105 0.707108 0 0">
+          <inertial pos="3.8375e-06 0.00114502 -0.000169625" quat="0.493701 0.506184 0.500967 0.499069" mass="0.00107256" diaginertia="8.73877e-08 5.53359e-08 3.33276e-08"/>
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.298039 0.298039 0.298039 1" mesh="IMU_link"/>
+          <geom type="mesh" rgba="0.298039 0.298039 0.298039 1" mesh="IMU_link"/>
+          <site name="imu" pos="0 0 0"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <general name="Left_joint_motor" joint="Left_joint" ctrllimited="true" ctrlrange="-20 20" forcelimited="true" forcerange="-20 20"/>
+    <general name="Right_joint_motor" joint="Right_joint" ctrllimited="true" ctrlrange="-20 20" forcelimited="true" forcerange="-20 20"/>
+    <general name="hip_yaw_left_pos" joint="hip_yaw_left" ctrllimited="true" ctrlrange="-1.57 1.57" forcelimited="true" forcerange="-40 40" biastype="affine" gainprm="150" biasprm="0 -150 -5"/>
+    <general name="hip_roll_left_pos" joint="hip_roll_left" ctrllimited="true" ctrlrange="-1.57 1.57" forcelimited="true" forcerange="-40 40" biastype="affine" gainprm="150" biasprm="0 -150 -5"/>
+    <general name="Upper_left_joint_pos" joint="Upper_left_joint" ctrllimited="true" ctrlrange="-1.57 1.57" forcelimited="true" forcerange="-40 40" biastype="affine" gainprm="150" biasprm="0 -150 -5"/>
+    <general name="Lower_left_joint_pos" joint="Lower_left_joint" ctrllimited="true" ctrlrange="-1.57 1.57" forcelimited="true" forcerange="-40 40" biastype="affine" gainprm="150" biasprm="0 -150 -5"/>
+    <general name="hip_yaw_right_pos" joint="hip_yaw_right" ctrllimited="true" ctrlrange="-1.57 1.57" forcelimited="true" forcerange="-40 40" biastype="affine" gainprm="150" biasprm="0 -150 -5"/>
+    <general name="hip_roll_right_pos" joint="hip_roll_right" ctrllimited="true" ctrlrange="-1.57 1.57" forcelimited="true" forcerange="-40 40" biastype="affine" gainprm="150" biasprm="0 -150 -5"/>
+    <general name="Upper_right_joint_pos" joint="Upper_right_joint" ctrllimited="true" ctrlrange="-1.57 1.57" forcelimited="true" forcerange="-40 40" biastype="affine" gainprm="150" biasprm="0 -150 -5"/>
+    <general name="Lower_right_joint_pos" joint="Lower_right_joint" ctrllimited="true" ctrlrange="-1.57 1.57" forcelimited="true" forcerange="-40 40" biastype="affine" gainprm="150" biasprm="0 -150 -5"/>
+  </actuator>
+
+  <sensor>
+    <framequat objtype="site" objname="imu" name="imu_quat"/>
+    <gyro site="imu" name="imu_gyro"/>
+    <accelerometer site="imu" name="imu_accel"/>
+    <jointpos joint="hip_yaw_left" name="hip_yaw_left_pos_s"/>
+    <jointvel joint="hip_yaw_left" name="hip_yaw_left_vel_s"/>
+    <jointpos joint="hip_roll_left" name="hip_roll_left_pos_s"/>
+    <jointvel joint="hip_roll_left" name="hip_roll_left_vel_s"/>
+    <jointpos joint="Upper_left_joint" name="Upper_left_joint_pos_s"/>
+    <jointvel joint="Upper_left_joint" name="Upper_left_joint_vel_s"/>
+    <jointpos joint="Lower_left_joint" name="Lower_left_joint_pos_s"/>
+    <jointvel joint="Lower_left_joint" name="Lower_left_joint_vel_s"/>
+    <jointpos joint="hip_yaw_right" name="hip_yaw_right_pos_s"/>
+    <jointvel joint="hip_yaw_right" name="hip_yaw_right_vel_s"/>
+    <jointpos joint="hip_roll_right" name="hip_roll_right_pos_s"/>
+    <jointvel joint="hip_roll_right" name="hip_roll_right_vel_s"/>
+    <jointpos joint="Upper_right_joint" name="Upper_right_joint_pos_s"/>
+    <jointvel joint="Upper_right_joint" name="Upper_right_joint_vel_s"/>
+    <jointpos joint="Lower_right_joint" name="Lower_right_joint_pos_s"/>
+    <jointvel joint="Lower_right_joint" name="Lower_right_joint_vel_s"/>
+    <jointpos joint="Left_joint" name="Left_joint_pos_s"/>
+    <jointvel joint="Left_joint" name="Left_joint_vel_s"/>
+    <jointpos joint="Right_joint" name="Right_joint_pos_s"/>
+    <jointvel joint="Right_joint" name="Right_joint_vel_s"/>
+  </sensor>
+
+  <keyframe>
+    <key name="home"/>
+  </keyframe>
+</mujoco>

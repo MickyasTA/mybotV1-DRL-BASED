@@ -21,11 +21,12 @@ import xacro
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, RegisterEventHandler
+from launch.actions import (DeclareLaunchArgument, IncludeLaunchDescription,
+                            RegisterEventHandler, TimerAction)
 from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 
 
@@ -34,16 +35,24 @@ def generate_launch_description():
 
     xacro_file = os.path.join(pkg, 'urdf', 'mybot_balance.urdf.xacro')
     controllers_file = os.path.join(pkg, 'config', 'controllers.yaml')
-    world_file = os.path.join(pkg, 'worlds', 'balance.world')
     gazebo_params_file = os.path.join(pkg, 'config', 'gazebo_params.yaml')
 
     gui = LaunchConfiguration('gui')
+    world = LaunchConfiguration('world')
     spawn_z = LaunchConfiguration('spawn_z')
     use_sim_time = LaunchConfiguration('use_sim_time')
+
+    # world1.world is the real room (walls, doors, staircase, cabinet) — gives the
+    # periodic_recorder a real environment to film. balance.world is an empty flat
+    # plane (faster, no scenery) if you only care about raw balance throughput.
+    world_file = PathJoinSubstitution([pkg, 'worlds', world])
 
     declare_gui = DeclareLaunchArgument(
         'gui', default_value='false',
         description='Run the Gazebo GUI (gzclient). Headless (false) is faster for training.')
+    declare_world = DeclareLaunchArgument(
+        'world', default_value='world1.world',
+        description='World file in worlds/: world1.world (real room+stairs) or balance.world (flat).')
     declare_spawn_z = DeclareLaunchArgument(
         'spawn_z', default_value='0.53',
         description='Initial spawn height (m); FK puts wheel contact ~0.52 m below base_link.')
@@ -56,7 +65,13 @@ def generate_launch_description():
     # ("Couldn't parse parameter override rule"). So we strip the <?xml?> decl + comments
     # and collapse all whitespace to a single line. XML is whitespace-insensitive between
     # tags, so this is safe and makes the forwarded --param parse cleanly.
-    _doc = xacro.process_file(xacro_file, mappings={'controllers_file': controllers_file})
+    # lock_legs='false' (default) => legs are REVOLUTE + effort-controlled; balance_env.py
+    # holds them at the 0 stance with a per-joint PD->effort, so they're separately
+    # controlled and rigid enough for balancing, and can be RL-driven later for walking.
+    # 'true' => legs FIXED (kept only as a fallback; wheels alone hold the body).
+    lock_legs = os.environ.get('LOCK_LEGS', 'false')
+    _doc = xacro.process_file(xacro_file, mappings={'controllers_file': controllers_file,
+                                                    'lock_legs': lock_legs})
     _urdf = _doc.toxml()
     _urdf = re.sub(r'<\?xml[^>]*\?>', '', _urdf)
     _urdf = re.sub(r'<!--.*?-->', '', _urdf, flags=re.S)
@@ -119,7 +134,7 @@ def generate_launch_description():
         arguments=['wheel_effort_controller', '--controller-manager', '/controller_manager'])
     leg_spawner = Node(
         package='controller_manager', executable='spawner', output='screen',
-        arguments=['leg_position_controller', '--controller-manager', '/controller_manager'])
+        arguments=['leg_effort_controller', '--controller-manager', '/controller_manager'])
 
     # Sequence: spawn robot -> joint_state_broadcaster -> wheel_effort_controller -> leg_position_controller
     after_spawn = RegisterEventHandler(
@@ -129,15 +144,26 @@ def generate_launch_description():
     after_wheel = RegisterEventHandler(
         OnProcessExit(target_action=wheel_spawner, on_exit=[leg_spawner]))
 
-    return LaunchDescription([
+    # world1.world is large; give gzserver time to finish loading it before spawning the
+    # robot, else spawn_entity races a half-loaded world and dies ("Spawn service failed.
+    # Exiting."), which leaves no controllers and the trainer wedges.
+    delayed_spawn = TimerAction(period=10.0, actions=[spawn_entity])
+
+    _actions = [
         declare_gui,
+        declare_world,
         declare_spawn_z,
         declare_sim_time,
         gzserver,
         gzclient,
         robot_state_publisher,
-        spawn_entity,
+        delayed_spawn,
         after_spawn,
         after_jsb,
-        after_wheel,
-    ])
+    ]
+    # Spawn the leg controller ONLY when the legs are revolute (walking stage). With
+    # lock_legs=true the legs are fixed + absent from ros2_control, so the controller
+    # would fail to load.
+    if lock_legs != 'true':
+        _actions.append(after_wheel)
+    return LaunchDescription(_actions)

@@ -1,7 +1,16 @@
 <?xml version="1.0"?> 
 
 <robot name="urdf_and_meshes_of_the_robot" xmlns:xacro = "http://ros.org/wiki/xacro">
-   
+
+  <!-- lock_legs: 'true' => the 8 leg joints are FIXED (rigid inverted-pendulum stance
+       for the STAGE-1 balance task; the wheels alone must keep the tall body upright).
+       'false' => the legs are 'revolute' + position_pid (for a later walking stage).
+       gazebo_ros2_control cannot hold these load-bearing chained joints via a position
+       interface (they buckle + kinematically lock), so we fix them for balance.
+       The balance launch passes this via xacro mappings; default = fixed. -->
+  <xacro:arg name="lock_legs" default="true"/>
+  <xacro:property name="_ljt" value="${'fixed' if '$(arg lock_legs)' == 'true' else 'revolute'}"/>
+
   <link name="base_link"/>  <!-- Dummy link added -->
   <joint name="base_joint" type="fixed">
     <parent link="base_link"/>
@@ -94,13 +103,13 @@
        Upper_left_leg.STL attaches exactly as before. Connector links are primitive
        cylinders (no STL needed). NOTE: yaw axis = Z (vertical), roll axis = X (forward);
        verify/flip in RViz if the sense looks wrong for your build. -->
-  <joint name="hip_yaw_left" type="revolute">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
+  <joint name="hip_yaw_left" type="${_ljt}">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
     <origin xyz="0.065 -0.0025 -0.055" rpy="0 0 0" />
     <parent link="BODY_link" />
     <child link="hip_yaw_link_left" />
     <axis xyz="0 0 1" />
-    <limit lower="-0.785" upper="0.785" effort="20" velocity="10" />
-    <dynamics damping="10.0" friction="100.0"/>
+    <limit lower="-0.785" upper="0.785" effort="200" velocity="10" />
+    <dynamics damping="0.5" friction="0.1"/>
   </joint>
   <link name="hip_yaw_link_left">
     <inertial>
@@ -116,13 +125,13 @@
     </visual>
   </link>
 
-  <joint name="hip_roll_left" type="revolute">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
+  <joint name="hip_roll_left" type="${_ljt}">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
     <origin xyz="0 0 0" rpy="0 0 0" />
     <parent link="hip_yaw_link_left" />
     <child link="hip_roll_link_left" />
     <axis xyz="1 0 0" />
-    <limit lower="-0.785" upper="0.785" effort="20" velocity="10" />
-    <dynamics damping="10.0" friction="100.0"/>
+    <limit lower="-0.785" upper="0.785" effort="200" velocity="10" />
+    <dynamics damping="0.5" friction="0.1"/>
   </joint>
   <link name="hip_roll_link_left">
     <inertial>
@@ -140,7 +149,7 @@
 
   <joint
     name="Upper_left_joint"
-    type="revolute">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
+    type="${_ljt}">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
     <origin
       xyz="0 0 0"
       rpy="1.5708 -0.5686 1.5708" />
@@ -153,9 +162,9 @@
     <limit
       lower="-1.57"
       upper="1.57"
-      effort="20"
+      effort="200"
       velocity="30" />
-    <dynamics damping="10.0" friction="100.0"/>
+    <dynamics damping="0.5" friction="0.1"/>
   </joint>
   <link
     name="Lower_left_leg">
@@ -199,7 +208,7 @@
   </link>
   <joint
     name="Lower_left_joint"
-    type="revolute">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
+    type="${_ljt}">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
     <origin
       xyz="0 -0.24941 0.032"
       rpy="0 0 -1.2888" />
@@ -212,9 +221,9 @@
     <limit
       lower="-1.57"
       upper="1.57"
-      effort="20"
+      effort="200"
       velocity="30" />
-    <dynamics damping="10.0" friction="100.0"/>
+    <dynamics damping="0.5" friction="0.1"/>
   </joint>
   <link
     name="Left_wheel">
@@ -269,7 +278,7 @@
     <limit
       lower="-1.57"
       upper="1.57"
-      effort="20"
+      effort="200"
       velocity="30" />
   </joint>
   <link
@@ -313,13 +322,13 @@
     </collision>
   </link>
   <!-- ===================== RIGHT HIP : 3-DOF (yaw -> roll -> pitch) ===================== -->
-  <joint name="hip_yaw_right" type="revolute">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
+  <joint name="hip_yaw_right" type="${_ljt}">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
     <origin xyz="-0.065 -0.0025 -0.055" rpy="0 0 0" />
     <parent link="BODY_link" />
     <child link="hip_yaw_link_right" />
     <axis xyz="0 0 1" />
-    <limit lower="-0.785" upper="0.785" effort="20" velocity="10" />
-    <dynamics damping="10.0" friction="100.0"/>
+    <limit lower="-0.785" upper="0.785" effort="200" velocity="10" />
+    <dynamics damping="0.5" friction="0.1"/>
   </joint>
   <link name="hip_yaw_link_right">
     <inertial>
@@ -335,13 +344,13 @@
     </visual>
   </link>
 
-  <joint name="hip_roll_right" type="revolute">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
+  <joint name="hip_roll_right" type="${_ljt}">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
     <origin xyz="0 0 0" rpy="0 0 0" />
     <parent link="hip_yaw_link_right" />
     <child link="hip_roll_link_right" />
     <axis xyz="1 0 0" />
-    <limit lower="-0.785" upper="0.785" effort="20" velocity="10" />
-    <dynamics damping="10.0" friction="100.0"/>
+    <limit lower="-0.785" upper="0.785" effort="200" velocity="10" />
+    <dynamics damping="0.5" friction="0.1"/>
   </joint>
   <link name="hip_roll_link_right">
     <inertial>
@@ -359,7 +368,7 @@
 
   <joint
     name="Upper_right_joint"
-    type="revolute">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
+    type="${_ljt}">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
     <origin
       xyz="0 0 0"
       rpy="1.5708 0.59611 -1.5708" />
@@ -372,9 +381,9 @@
     <limit
       lower="-1.57"
       upper="1.57"
-      effort="20"
+      effort="200"
       velocity="30" />
-    <dynamics damping="10.0" friction="100.0"/>
+    <dynamics damping="0.5" friction="0.1"/>
   </joint>
   <link
     name="Lower_right_link">
@@ -418,7 +427,7 @@
   </link>
   <joint
     name="Lower_right_joint"
-    type="revolute">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
+    type="${_ljt}">   <!-- free leg joint: actuated, held at stance for balance; RL-controlled for walking -->
     <origin
       xyz="0 -0.24941 0.034"
       rpy="0 0 1.3094" />
@@ -431,9 +440,9 @@
     <limit
       lower="-1.57"
       upper="1.57"
-      effort="20"
+      effort="200"
       velocity="30" />
-    <dynamics damping="10.0" friction="100.0"/>
+    <dynamics damping="0.5" friction="0.1"/>
   </joint>
   <link
     name="Right_wheel">

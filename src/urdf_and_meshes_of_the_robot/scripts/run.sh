@@ -22,7 +22,14 @@ case "${1:-help}" in
     "$PY" "$SCRIPTS/ppo_balance.py" --env Pendulum-v1 --total-timesteps 100000 \
         --run-dir "$RUN_DIR" ;;
   sim)
-    ros2 launch "$PKG" balance.launch.py gui:=false ;;
+    # Headless sim for training + recording. The periodic recorder spawns a camera into
+    # gzserver, which needs an X display to render it. WSLg's :0 is not reliably present
+    # in headless shells, so bring up a self-contained Xvfb on :99 (no-op if one is up).
+    if ! xdpyinfo >/dev/null 2>&1; then
+      pgrep -f "Xvfb :99" >/dev/null 2>&1 || { Xvfb :99 -screen 0 1280x1024x24 -nolisten tcp >/tmp/xvfb_mybot.log 2>&1 & sleep 2; }
+      export DISPLAY=:99
+    fi
+    ros2 launch "$PKG" balance.launch.py gui:=false world:="${WORLD:-world1.world}" ;;
   train)
     "$PY" "$SCRIPTS/ppo_balance.py" --env balance --device "${DEVICE:-cpu}" \
         --max-episodes "${MAX_EP:-5000}" --record-first 100 --record-every 400 \

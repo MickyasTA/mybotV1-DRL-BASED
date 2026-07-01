@@ -24,13 +24,16 @@ controller_manager:
     wheel_effort_controller:
       type: effort_controllers/JointGroupEffortController
 
-    leg_position_controller:
-      type: position_controllers/JointGroupPositionController
+    leg_effort_controller:
+      type: effort_controllers/JointGroupEffortController
 
 wheel_effort_controller:
   ros__parameters:
     joints: [Left_joint, Right_joint]
 
-leg_position_controller:
+# Legs: revolute, EFFORT-controlled. balance_env.py holds them at the 0 stance with a
+# per-joint PD -> effort (real SetForce torque). Joint order MUST match LEG_JOINTS in
+# balance_env.py (HIP_JOINTS + KNEE_JOINTS).
+leg_effort_controller:
   ros__parameters:
-    joints: [hip_yaw_left, hip_roll_left, Upper_left_joint, Lower_left_joint, hip_yaw_right, hip_roll_right, Upper_right_joint, Lower_right_joint]
+    joints: [hip_yaw_left, hip_roll_left, Upper_left_joint, hip_yaw_right, hip_roll_right, Upper_right_joint, Lower_left_joint, Lower_right_joint]

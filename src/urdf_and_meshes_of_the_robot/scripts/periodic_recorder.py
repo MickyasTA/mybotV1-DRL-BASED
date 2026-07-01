@@ -36,9 +36,10 @@ import cv2
 
 REPO = "/mnt/c/Users/mtasfaw/Documents/personal/mybotV1-DRL-BASED"
 RUN = f"{REPO}/training_results/run1"
-REC_EVERY = int(os.environ.get("REC_EVERY", "400"))
-REC_EPISODES = int(os.environ.get("REC_EPISODES", "40"))
-REC_MAX_SECONDS = float(os.environ.get("REC_MAX_SECONDS", "120"))
+REC_FIRST = int(os.environ.get("REC_FIRST", "100"))          # first clip at this episode
+REC_EVERY = int(os.environ.get("REC_EVERY", "400"))          # then a clip every this many episodes
+REC_EPISODES = int(os.environ.get("REC_EPISODES", "50"))     # ~50 Gazebo episodes per clip
+REC_MAX_SECONDS = float(os.environ.get("REC_MAX_SECONDS", "150"))  # hard time cap per clip
 REC_FPS = float(os.environ.get("REC_FPS", "20"))
 REC_LOG = os.environ.get("REC_LOG", f"{RUN}/train.log")
 REC_DIR = os.environ.get("REC_DIR", f"{RUN}/videos")
@@ -56,7 +57,7 @@ _CAM_SDF_XML = """<?xml version="1.0"?>
 <sdf version="1.6">
   <model name="rec_cam">
     <static>true</static>
-    <pose>1.6 -1.6 1.1 0 0.3 2.356</pose>
+    <pose>0 4 3.4 0 0.6 -1.5708</pose>
     <link name="rec_cam_link">
       <visual name="v"><geometry><box><size>0.05 0.05 0.05</size></box></geometry></visual>
       <sensor name="rec_camera" type="camera">
@@ -64,9 +65,9 @@ _CAM_SDF_XML = """<?xml version="1.0"?>
         <update_rate>20</update_rate>
         <visualize>false</visualize>
         <camera>
-          <horizontal_fov>1.1</horizontal_fov>
-          <image><width>960</width><height>540</height><format>R8G8B8</format></image>
-          <clip><near>0.05</near><far>50</far></clip>
+          <horizontal_fov>1.2</horizontal_fov>
+          <image><width>1280</width><height>720</height><format>R8G8B8</format></image>
+          <clip><near>0.1</near><far>120</far></clip>
         </camera>
         <plugin name="rec_cam_plugin" filename="libgazebo_ros_camera.so">
           <ros><namespace>/rec_cam</namespace></ros>
@@ -121,19 +122,28 @@ class PeriodicRecorder(Node):
     def tick(self):
         ep = self.current_episode()
         if not self.recording:
-            mark = (ep // REC_EVERY) * REC_EVERY
-            if mark >= REC_EVERY and mark > self.last_mark:
-                self._start(ep, mark)
+            if self.last_mark == 0:
+                # first clip at REC_FIRST (e.g. episode 100)
+                if ep >= REC_FIRST:
+                    self._start(ep, REC_FIRST)
+            else:
+                # then a clip at every REC_EVERY-episode mark (400, 800, ...)
+                mark = (ep // REC_EVERY) * REC_EVERY
+                if mark >= REC_EVERY and mark > self.last_mark:
+                    self._start(ep, mark)
         else:
             if (ep - self.rec_start_ep) >= REC_EPISODES or \
                     (time.time() - self.rec_start_t) >= REC_MAX_SECONDS:
                 self._stop(ep)
 
     def _spawn_cam(self):
+        # The camera pose comes from the SDF <pose> (0 4 3.4 0 0.6 -1.5708): robot in
+        # the foreground with the staircase behind it. Do NOT also pass -x/-y/-R/-P/-Y
+        # to spawn_entity — it composes them ON TOP of the SDF pose, double-applying the
+        # rotation and skewing the view.
         subprocess.run(
             ["ros2", "run", "gazebo_ros", "spawn_entity.py", "-entity", "rec_cam",
-             "-file", REC_CAM_SDF, "-x", "1.6", "-y", "-1.6", "-z", "1.1",
-             "-R", "0", "-P", "0.3", "-Y", "2.356"],
+             "-file", REC_CAM_SDF],
             capture_output=True, timeout=25)
 
     def _delete_cam(self):

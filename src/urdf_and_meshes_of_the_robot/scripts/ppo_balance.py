@@ -195,6 +195,9 @@ def make_env(env_name, render=False):
     if env_name == "balance":
         from balance_env import BalanceEnv          # imported lazily (needs ROS)
         return BalanceEnv(use_pause=False)          # continuous sim for fast (10-20x) training
+    if env_name == "mujoco":
+        from balance_env_mujoco import MujocoBalanceEnv   # MuJoCo (realistic, actuated legs)
+        return MujocoBalanceEnv(render=render)
     import gymnasium as gym
     return gym.make(env_name, render_mode="human" if render else None)
 
@@ -294,6 +297,7 @@ def train(args):
 
     num_updates = args.total_timesteps // N
     best_eval = -float("inf")
+    _last_ckpt_ep = 0        # episode count of the last numbered checkpoint
     global_step = resume_step if resume_step is not None else start_update * N
     t_start = time.time()
 
@@ -487,16 +491,19 @@ def train(args):
             sys.exit(43)
 
         # ---- 5) checkpoint + periodic eval ----
+        # Save scheme: model_latest.pth (frequent resume copy), model_best.pth (best eval),
+        # and a numbered model_episode_<N>.pth every --checkpoint-every EPISODES.
+        extra = {"total_episodes": total_episodes, "next_milestone": next_milestone,
+                 "global_step": global_step}
         if (update + 1) % args.save_interval == 0:
-            extra = {"total_episodes": total_episodes, "next_milestone": next_milestone,
-                     "global_step": global_step}
-            # numbered episode checkpoint + stable resume copy (wrapper loads model_latest.pth)
-            _save(agent, obs_rms, rew_norm, update + 1, args,
-                  os.path.join(run_dir, f"model_episode_{total_episodes}.pth"), extra=extra)
             _save(agent, obs_rms, rew_norm, update + 1, args,
                   os.path.join(run_dir, "model_latest.pth"), extra=extra)
             if mlog:
                 mlog.write_summary(time.time(), total_episodes)
+        if total_episodes >= _last_ckpt_ep + args.checkpoint_every:
+            _last_ckpt_ep = (total_episodes // args.checkpoint_every) * args.checkpoint_every
+            _save(agent, obs_rms, rew_norm, update + 1, args,
+                  os.path.join(run_dir, f"model_episode_{total_episodes}.pth"), extra=extra)
         if args.eval_interval and (update + 1) % args.eval_interval == 0:
             eval_ret = evaluate(agent, obs_rms, args, episodes=args.eval_episodes, device=device)
             print(f"    [eval] mean return over {args.eval_episodes} eps: {eval_ret:.2f}")
