@@ -35,8 +35,11 @@ LEG_JOINTS = ["hip_yaw_left", "hip_roll_left", "Upper_left_joint", "Lower_left_j
 class MujocoBalanceEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"]}
 
-    def __init__(self, render=False, control_hz=50.0, max_steps=1000, seed=None):
-        self.model = mujoco.MjModel.from_xml_path(MODEL_PATH)
+    def __init__(self, render=False, control_hz=50.0, max_steps=1000, seed=None,
+                 model_path=None):
+        # model_path overrides the default robot model (e.g. the generated terrain
+        # variant mybot_terrain.xml used by Stage 4); default = mybot.xml / $MJ_MODEL.
+        self.model = mujoco.MjModel.from_xml_path(model_path or MODEL_PATH)
         self.data = mujoco.MjData(self.model)
         self.sim_dt = float(self.model.opt.timestep)
         self.n_sub = max(1, int(round((1.0 / control_hz) / self.sim_dt)))

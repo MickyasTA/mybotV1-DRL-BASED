@@ -120,7 +120,8 @@ def _inspect_ckpt(ckpt_path):
         obs = int(ck["model"]["actor_mean.0.weight"].shape[1])
         act = int(ck["model"]["actor_logstd"].shape[1])
         env_name = args.get("env")
-        if env_name not in ("mujoco", "mujoco_nav", "mujoco_nav_bal"):
+        if env_name not in ("mujoco", "mujoco_nav", "mujoco_nav_bal",
+                            "mujoco_obstacle", "mujoco_terrain"):
             env_name = _ACT_TO_ENV.get(act, "mujoco")
         hidden = tuple(args.get("hidden") or (64, 64))
         return kind, env_name, obs, act, hidden

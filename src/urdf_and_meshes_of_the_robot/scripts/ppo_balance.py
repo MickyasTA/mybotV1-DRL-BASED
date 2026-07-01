@@ -204,6 +204,12 @@ def make_env(env_name, render=False):
     if env_name == "mujoco_nav_bal":
         from nav_env_mujoco import GoalNavEnv             # Stage 2a: balance WITH actuated legs
         return GoalNavEnv(render=render, goal_reward=False)
+    if env_name == "mujoco_obstacle":
+        from nav_env_mujoco import ObstacleNavEnv         # Stage 3: obstacles + ducking
+        return ObstacleNavEnv(render=render)
+    if env_name == "mujoco_terrain":
+        from nav_env_mujoco import TerrainNavEnv          # Stage 4: stairs + rough terrain
+        return TerrainNavEnv(render=render)
     import gymnasium as gym
     return gym.make(env_name, render_mode="human" if render else None)
 

@@ -40,7 +40,8 @@ def _worker(remote, factory, seed):
             remote.send(obs)
         elif cmd == "spaces":
             remote.send((env.observation_space, env.action_space,
-                         float(env.sim_dt), int(env.n_sub)))
+                         float(env.sim_dt), int(env.n_sub),
+                         int(getattr(env, "_frame_dim", 0)), int(getattr(env, "k", 1))))
         elif cmd == "close":
             env.close(); remote.close(); return
 
@@ -58,8 +59,8 @@ class SubprocVecEnv:
             self.procs.append(p)
             wr.close()
         self.remotes[0].send(("spaces", None))
-        self.observation_space, self.action_space, self.sim_dt, self.n_sub = \
-            self.remotes[0].recv()
+        (self.observation_space, self.action_space, self.sim_dt, self.n_sub,
+         self.frame_dim, self.k) = self.remotes[0].recv()
 
     def reset(self, seed=None):
         for i, r in enumerate(self.remotes):

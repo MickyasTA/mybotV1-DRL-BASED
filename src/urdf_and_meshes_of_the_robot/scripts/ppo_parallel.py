@@ -88,11 +88,19 @@ def train(args):
     def log(s):
         print(s); logf.write(s + "\n"); logf.flush()
 
-    if args.load and os.path.isfile(args.load):     # curriculum warm-start (same dims)
-        ck = torch.load(args.load, map_location=dev)
-        agent.load_state_dict(ck["model"])
-        obs_rms.load_state_dict(ck["obs_rms"])
-        log(f"[ppo-par] warm-started from {args.load}")
+    if args.load and os.path.isfile(args.load):     # curriculum warm-start
+        ck = torch.load(args.load, map_location=dev, weights_only=False)
+        ck_obs = int(ck.get("obs_dim") or ck["model"]["actor_mean.0.weight"].shape[1])
+        ck_act = int(ck.get("act_dim") or ck["model"]["actor_logstd"].shape[1])
+        if (ck_obs, ck_act) == (obs_dim, act_dim):
+            agent.load_state_dict(ck["model"])
+            obs_rms.load_state_dict(ck["obs_rms"])
+            log(f"[ppo-par] warm-started from {args.load}")
+        else:
+            _surgery_load(agent, obs_rms, ck, obs_dim, act_dim, ck_obs, ck_act,
+                          envs.frame_dim, envs.k, log)
+            log(f"[ppo-par] warm-started via WEIGHT SURGERY from {args.load} "
+                f"(obs {ck_obs}->{obs_dim})")
 
     raw = envs.reset(seed=args.seed)
     obs_rms.update(raw)
@@ -236,6 +244,47 @@ def train(args):
         writer.close()
     envs.close()
     log(f"[ppo-par] done. best ep_rew={best:.2f}  {time.time()-t0:.0f}s")
+
+
+def _surgery_load(agent, obs_rms, ck, obs_dim, act_dim, ck_obs, ck_act,
+                  frame_dim, k, log):
+    """Warm-start into a WIDER observation (curriculum stage change, e.g. Stage-2 nav
+    obs117 -> Stage-3 obstacle obs183). Works because every stage keeps the previous
+    per-frame layout as a PREFIX and only appends new features (rays etc.) at the end
+    of each frame: old first-layer columns are copied to their new (shifted) positions,
+    the brand-new feature columns start at zero (so the loaded policy initially IGNORES
+    the new inputs and behaves exactly like the Stage-2 policy), and everything past
+    the first layer copies verbatim. Action dim must be unchanged."""
+    assert ck_act == act_dim, f"action-dim change {ck_act}->{act_dim} not supported"
+    assert ck_obs % k == 0 and frame_dim * k == obs_dim, "frame layout mismatch"
+    old_frame = ck_obs // k
+    assert old_frame <= frame_dim, "new frame must be a superset of the old one"
+    new_idx = torch.tensor([f * frame_dim + j for f in range(k) for j in range(old_frame)])
+    old_idx = torch.tensor([f * old_frame + j for f in range(k) for j in range(old_frame)])
+
+    sd_new = agent.state_dict()
+    sd_old = ck["model"]
+    for name in sd_new:
+        wold = sd_old.get(name)
+        if wold is None:
+            log(f"[surgery] missing in ckpt, kept init: {name}")
+        elif sd_new[name].shape == wold.shape:
+            sd_new[name] = wold.clone()
+        elif name.endswith(".0.weight") and sd_new[name].shape[0] == wold.shape[0]:
+            w = torch.zeros_like(sd_new[name])
+            w[:, new_idx] = wold[:, old_idx]
+            sd_new[name] = w
+        else:
+            log(f"[surgery] shape mismatch, kept init: {name} "
+                f"{tuple(wold.shape)} -> {tuple(sd_new[name].shape)}")
+    agent.load_state_dict(sd_new)
+
+    old_rms = ck["obs_rms"]
+    mean = np.zeros(obs_dim, np.float64)
+    var = np.ones(obs_dim, np.float64)
+    mean[new_idx.numpy()] = np.asarray(old_rms["mean"])[old_idx.numpy()]
+    var[new_idx.numpy()] = np.asarray(old_rms["var"])[old_idx.numpy()]
+    obs_rms.load_state_dict({"mean": mean, "var": var, "count": old_rms["count"]})
 
 
 def _save(agent, obs_rms, args, obs_dim, act_dim, path):
