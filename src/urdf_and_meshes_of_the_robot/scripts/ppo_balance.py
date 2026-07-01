@@ -205,8 +205,15 @@ def make_env(env_name, render=False):
         from nav_env_mujoco import GoalNavEnv             # Stage 2a: balance WITH actuated legs
         return GoalNavEnv(render=render, goal_reward=False)
     if env_name == "mujoco_obstacle":
-        from nav_env_mujoco import ObstacleNavEnv         # Stage 3: obstacles + ducking
+        from nav_env_mujoco import ObstacleNavEnv         # Stage 3b: obstacles + ducking
         return ObstacleNavEnv(render=render)
+    if env_name == "mujoco_obstacle_bal":
+        # Stage 3a: SAME env/obs but no obstacles — relearn balance+nav at the widened
+        # leg range (0.25 -> 0.7 rad). Needed because the Stage-2 policy saturates ~87%
+        # of its leg commands against the action clip, so no weight rescale can preserve
+        # its behavior when the effective range grows; it must re-adapt briefly first.
+        from nav_env_mujoco import ObstacleNavEnv
+        return ObstacleNavEnv(render=render, p_table=0.0, n_pillars=(0, 0))
     if env_name == "mujoco_terrain":
         from nav_env_mujoco import TerrainNavEnv          # Stage 4: stairs + rough terrain
         return TerrainNavEnv(render=render)

@@ -97,8 +97,20 @@ def train(args):
             obs_rms.load_state_dict(ck["obs_rms"])
             log(f"[ppo-par] warm-started from {args.load}")
         else:
+            # if the new env amplifies leg actions (leg_scale grew, e.g. 0.25 -> 0.7
+            # for the ducking stage), rescale the loaded actor's leg-output rows and
+            # log-std so the policy commands the SAME radians as before -- otherwise
+            # the transferred balance is destroyed by 2.8x-amplified leg commands.
+            act_scale = None
+            if args.load_leg_old_scale > 0 and getattr(envs, "leg_scale", 0) > 0 \
+                    and args.load_leg_old_scale != envs.leg_scale:
+                r = args.load_leg_old_scale / envs.leg_scale
+                act_scale = np.ones(act_dim, np.float64)
+                act_scale[2:] = r                     # dims 0,1 = wheels (unchanged)
+                log(f"[ppo-par] rescaling leg-action outputs by {r:.3f} "
+                    f"(leg_scale {args.load_leg_old_scale} -> {envs.leg_scale})")
             _surgery_load(agent, obs_rms, ck, obs_dim, act_dim, ck_obs, ck_act,
-                          envs.frame_dim, envs.k, log)
+                          envs.frame_dim, envs.k, log, act_scale=act_scale)
             log(f"[ppo-par] warm-started via WEIGHT SURGERY from {args.load} "
                 f"(obs {ck_obs}->{obs_dim})")
 
@@ -237,6 +249,16 @@ def train(args):
             _last_ckpt_ep = (total_episodes // args.checkpoint_every) * args.checkpoint_every
             _save(agent, obs_rms, args, obs_dim, act_dim,
                   os.path.join(run_dir, f"model_episode_{total_episodes}.pth"))
+        # curriculum auto-advance: the stage counts as LEARNED once the rolling episode
+        # metrics cross the thresholds -> finish early so the next stage starts sooner.
+        # (--total-timesteps stays as the safety cap if the thresholds are never met.)
+        if (update > 50 and len(rets) >= 100
+                and (args.advance_ep_rew or args.advance_ep_len)
+                and (not args.advance_ep_rew or mret >= args.advance_ep_rew)
+                and (not args.advance_ep_len or mlen >= args.advance_ep_len)):
+            log(f"[ppo-par] ADVANCE: stage learned (ep_rew {mret:.1f} / ep_len {mlen:.1f} "
+                f"crossed thresholds) at step {gstep} -- finishing early")
+            break
     _save(agent, obs_rms, args, obs_dim, act_dim, os.path.join(run_dir, "model_final.pth"))
     if mlog:
         mlog.write_summary(time.time(), total_episodes)
@@ -247,7 +269,7 @@ def train(args):
 
 
 def _surgery_load(agent, obs_rms, ck, obs_dim, act_dim, ck_obs, ck_act,
-                  frame_dim, k, log):
+                  frame_dim, k, log, act_scale=None):
     """Warm-start into a WIDER observation (curriculum stage change, e.g. Stage-2 nav
     obs117 -> Stage-3 obstacle obs183). Works because every stage keeps the previous
     per-frame layout as a PREFIX and only appends new features (rays etc.) at the end
@@ -277,6 +299,18 @@ def _surgery_load(agent, obs_rms, ck, obs_dim, act_dim, ck_obs, ck_act,
         else:
             log(f"[surgery] shape mismatch, kept init: {name} "
                 f"{tuple(wold.shape)} -> {tuple(sd_new[name].shape)}")
+    if act_scale is not None:
+        # preserve the EFFECTIVE (post-leg_scale) action: scale the actor's output
+        # rows + bias by old_scale/new_scale, and shift log-std so the exploration
+        # noise stays the same in radians too.
+        s = torch.as_tensor(act_scale, dtype=torch.float32)
+        out = max((n for n in sd_new if n.startswith("actor_mean.")
+                   and n.endswith(".weight")),
+                  key=lambda n: int(n.split(".")[1]))
+        sd_new[out] = sd_new[out] * s[:, None]
+        sd_new[out.replace("weight", "bias")] = \
+            sd_new[out.replace("weight", "bias")] * s
+        sd_new["actor_logstd"] = sd_new["actor_logstd"] + torch.log(s)[None, :]
     agent.load_state_dict(sd_new)
 
     old_rms = ck["obs_rms"]
@@ -313,6 +347,14 @@ if __name__ == "__main__":
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--run-dir", default="../../../training_results/par1")
     p.add_argument("--load", default=None, help="warm-start checkpoint (same obs/act dims)")
+    p.add_argument("--advance-ep-rew", type=float, default=0.0,
+                   help="curriculum: finish the stage early once rolling ep_rew >= this")
+    p.add_argument("--advance-ep-len", type=float, default=0.0,
+                   help="curriculum: finish the stage early once rolling ep_len >= this")
+    p.add_argument("--load-leg-old-scale", type=float, default=0.0,
+                   help="leg_scale of the env the --load ckpt was trained in; if it "
+                        "differs from this env's, the actor's leg outputs are rescaled "
+                        "so the effective (radian) commands are preserved")
     p.add_argument("--session-id", default="", help="metrics session id (empty -> timestamp)")
     p.add_argument("--checkpoint-every", type=int, default=200,
                    help="checkpoint cadence in EPISODES (model_episode_<N>.pth)")

@@ -74,6 +74,24 @@ The all‑in‑one resilient launcher used during development is `~/mybot_train_
    (`TimerAction`) to avoid "Spawn service failed", but it can still race intermittently —
    the resilient wrapper retries.
 
+## Curriculum training (one continuum)
+`scripts/train_curriculum.sh [start-stage]` runs the whole skill curriculum
+autonomously: 2a balance-with-legs → 2b goal-nav → 3a wide-leg re-balance → 3b
+obstacles+ducking → 4 stairs/terrain. Stages ADVANCE automatically when learned
+(`--advance-ep-rew/--advance-ep-len` rolling thresholds; `--total-timesteps` is only a
+safety cap) and each warm-starts from the previous `model_best.pth` (weight surgery
+when the obs grows). Portable: paths derive from the script location; set `PYTHON=`.
+
+**Hard-won finding #6 — leg-range widening breaks warm-starts.** The Stage-2 policy
+saturates ~87% of its leg commands against the [-1,1] action clip, so when `leg_scale`
+grows (0.25 → 0.7 rad, needed for ducking) NO weight rescale can preserve behavior
+(clipping is nonlinear; a row-rescale un-saturates railed commands into 0.7 rad bends
+→ instant collapse — measured, not theory). The fix is the same split-stage pattern
+that cracked Stage 2: re-learn balance at the new range with the task stripped away
+(`mujoco_obstacle_bal`, stage 3a), THEN add obstacles. When changing leg_scale between
+stages, always pass `--load-leg-old-scale <old>` (rescales outputs + log-std for the
+unsaturated regime) and budget a re-adaptation stage.
+
 ## STANDARD RESULTS LAYOUT — every trainer records EVERY run like this
 The user considers this layout (as produced for `training_results/mujoco_run2`) the
 standard. **Any new trainer / training stage MUST write the same structure** — never
