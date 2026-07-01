@@ -8,12 +8,15 @@ independent legs (3‑DOF hip + knee each) ending in driven wheels; the staged g
 2. **Stage 2+ — walk / climb** with the legs *while* the wheels turn — the legs are
    already revolute + individually actuated, ready to add to the policy.
 
-> ## ✅ Result: the robot fully balances
-> Trained in **MuJoCo**, the policy holds a **full 20‑second balance** (ep_len 1000, the
-> episode cap) — upright on its wheels, legs held rigid, realistic contacts/friction/
-> actuators. Watch `training_results/mujoco_balance.mp4`, or see the still below.
-> Training went from falling in ~0.3 s (ep_len 16) to a full balance in ~3 M steps
-> (~1 hr on CPU at ~850 steps/s, fully headless — no GPU, no display).
+> ## ✅ Result: the robot balances AND drives to a goal point
+> **Stage 1 (balance):** trained in **MuJoCo**, the policy holds a **full 20‑second
+> balance** (ep_len 1000) — upright on its wheels, legs held, realistic contacts/friction.
+> **Stage 2 (goal‑navigation):** with the **8 leg joints now actuated** (no longer fixed),
+> the robot drives to a randomized goal point and **stops there** — verified over 10 held‑
+> out episodes: **9/10 arrived**, mean end‑distance **0.16 m** from a mean start of
+> **1.47 m**, still balancing the full 1000 steps. Watch
+> `training_results/mujoco_balance.mp4` (Stage 1) and
+> `training_results/nav_goal_reach.mp4` (Stage 2, goal marker visible).
 
 ---
 
@@ -45,10 +48,15 @@ mybotV1-DRL-BASED/
     ├── urdf/                        ← robot xacro/urdf (mybot_geometry, mybot_balance)
     ├── mujoco/mybot.xml             ← ★ MuJoCo model (floating base, floor, actuators, IMU)
     └── scripts/
-        ├── ppo_balance.py           ← ★ from‑scratch PPO trainer (--env mujoco | balance | Pendulum-v1)
-        ├── balance_env_mujoco.py    ← ★ MuJoCo Gymnasium balance env
-        ├── mujoco_record.py         ← ★ render a checkpoint → mp4 (headless, osmesa)
-        ├── mujoco_play.py           ← ★ watch a checkpoint balance LIVE (interactive viewer)
+        ├── ppo_balance.py           ← ★ from‑scratch PPO, single env (--env mujoco | mujoco_nav | balance | Pendulum-v1)
+        ├── ppo_parallel.py          ← ★ same PPO, N parallel MuJoCo envs (multi‑core CPU, ~5x @ 24 envs)
+        ├── vec_env.py               ← multiprocessing SubprocVecEnv (no RL library)
+        ├── balance_env_mujoco.py    ← ★ MuJoCo Gymnasium env — Stage 1 balance (obs69/act2)
+        ├── nav_env_mujoco.py        ← ★ MuJoCo Gymnasium env — Stage 2 goal‑nav (obs117/act10, legs actuated)
+        ├── nav_eval.py              ← direct goal‑reaching evaluation (arrival rate, end‑distance)
+        ├── mujoco_view.py           ← ★ view/record ANY checkpoint (.pth or .pkl), auto‑detect + hot‑reload
+        ├── mujoco_record.py / mujoco_play.py  ← thin shims → mujoco_view.py (kept for old commands)
+        ├── mjx_env.py / mjx_nav_env.py / mjx_ppo.py / mjx_render.py  ← GPU path (MJX/JAX), see §4b
         ├── balance_env.py           ← Gazebo/ROS 2 env (legacy)
         ├── periodic_recorder.py     ← Gazebo real‑camera recorder (legacy)
         └── env.py / train_rl_ppo.py ← original SB3 baseline (reference only, unused)
@@ -70,7 +78,7 @@ cd src/urdf_and_meshes_of_the_robot/scripts
 python ppo_balance.py --env Pendulum-v1 --total-timesteps 150000    # return rises toward ~-200
 ```
 
-**Train the balancer** (writes to `training_results/mujoco_run1/`):
+**Train the balancer** (single env; writes to `training_results/mujoco_run1/`):
 ```bash
 python ppo_balance.py --env mujoco --total-timesteps 3000000 \
     --target-kl 0.02 --ent-coef 0.005 --eval-interval 10 \
@@ -78,17 +86,45 @@ python ppo_balance.py --env mujoco --total-timesteps 3000000 \
     --run-dir ../../../training_results/mujoco_run1
 ```
 
-**Record a video** of the best policy (offscreen — no display needed):
+**Train goal‑navigation** (Stage 2, legs actuated) — use `ppo_parallel.py` (N MuJoCo envs
+across CPU cores; a 28‑core box does ~5x with `--num-envs 24`) and a **2‑step curriculum**:
+first learn to balance *with the legs held near their stance* (no goal yet — the legs
+jittering as a new 8‑D action is what topples a from‑scratch attempt), THEN warm‑start
+that policy with the goal added. Same obs/action shape both stages → clean warm‑start:
 ```bash
-MUJOCO_GL=osmesa python mujoco_record.py \
-    --ckpt ../../../training_results/mujoco_run1/model_best.pth \
-    --out  ../../../training_results/mujoco_balance.mp4
+# 2a: balance WITH actuated legs, no goal (station-keeps at the origin)
+python ppo_parallel.py --env mujoco_nav_bal --num-envs 24 --total-timesteps 6000000 \
+    --run-dir ../../../training_results/nav2a_balleg
+
+# 2b: warm-start 2a, add the goal — drive to a randomized point and hold
+python ppo_parallel.py --env mujoco_nav --num-envs 24 --total-timesteps 6000000 \
+    --load ../../../training_results/nav2a_balleg/model_best.pth \
+    --run-dir ../../../training_results/nav2b_goal
+
+# verify: arrival rate + end-distance over held-out episodes
+python nav_eval.py --ckpt ../../../training_results/nav2b_goal/model_best.pth --episodes 10
 ```
 
-**Watch it live** (interactive window — needs a display, e.g. WSLg's `:0`):
+**View / record ANY checkpoint — one generalizable script** (`mujoco_view.py`). It
+auto‑detects the **file format** (`.pth`/`.pt` from the PyTorch trainers, `.pkl` from the
+JAX/MJX GPU trainer), the environment, and the obs/action dimensions **from the checkpoint
+itself**, so the same command works for every stage and either trainer — no need to edit
+the script when the architecture changes. It also picks the right GL backend automatically
+(`glfw` for the live window, `osmesa` for headless mp4), so no more EGL errors.
+
 ```bash
-DISPLAY=:0 python mujoco_play.py --ckpt ../../../training_results/mujoco_run1/model_best.pth
+# watch live in a window (needs a display, e.g. WSLg's :0)
+DISPLAY=:0 python mujoco_view.py --ckpt ../../../training_results/mujoco_run1/model_best.pth
+
+# record an mp4 (+ a still .png) — headless, no display needed
+python mujoco_view.py --ckpt ../../../training_results/nav2b_goal/model_best.pth --record clip.mp4
 ```
+**Live viewing hot‑reloads:** if you leave the live window open while a trainer keeps
+writing an improved `model_best` to the same path, `mujoco_view.py` notices (checks the
+file's mtime) and swaps in the new weights between episodes — so a long‑running window
+always plays the *current* best policy, not a one‑time snapshot. Pass `--no-watch` to
+disable. (`mujoco_play.py` and `mujoco_record.py` still work — they forward to
+`mujoco_view.py`.)
 
 ---
 
@@ -119,6 +155,28 @@ with **`--target-kl 0.02`** (early‑stops the epoch loop — without it KL blow
 0.3–1.0 and the policy degrades) and a small **`--ent-coef 0.005`** (prevents entropy
 collapse). Standard: lr 3e‑4, n_steps 2048, batch 64, n_epochs 10, γ 0.99, gae‑λ 0.95.
 
+**Stage‑2 goal‑nav env** (`nav_env_mujoco.py`): same base as Stage 1, plus:
+- **Obs** (117‑d, 3‑frame history): all 9 base‑state terms + **all 8** leg positions/
+  velocities (Stage 1 only exposed 6 hip joints) + a **base‑frame goal vector**
+  `[dir_x, dir_y, heading_err, distance]` + the 10‑d previous action.
+- **Action** (10‑d): 2 wheel torques + **8 leg position targets** (± a small range around
+  the 0 stance — kept small so exploration jitter doesn't topple balance; widen at the
+  ducking/terrain stage where the legs need real range of motion).
+- **Reward** adds to the Stage‑1 terms: dense **potential‑based progress** toward the
+  goal, **velocity‑toward‑goal**, **face‑the‑goal**, an **arrival bonus** paid every step
+  while inside the goal radius, a **stall penalty** for standing still far from the goal,
+  and — the important one — a **posture penalty** (`−0.6·Σ leg_qpos²`) that keeps the legs
+  near their stance. *Why it matters:* without it, the very first goal‑nav policy solved
+  balance by **splaying its legs into a wide static split** — free lateral stability, but
+  not the point of actuating the legs at all. The posture penalty removed that shortcut.
+- **Curriculum, not one‑shot:** actuating the legs (10‑D action) *and* adding a goal *and*
+  banning the splay‑shortcut, all at once, from scratch, made the robot fall in ~5 steps
+  every time — an 8‑D action jittering during early exploration is simply too destabilizing
+  layered on a brand‑new task. Splitting into **2a** (balance‑with‑legs, no goal) → **2b**
+  (warm‑start 2a, add the goal) fixed it: 2a converges to ep_len ~900/1000 in a few minutes,
+  and 2b *keeps* that balance from step one (ep_len jumps straight to ~800 by update 10)
+  while learning to navigate on top of it.
+
 ---
 
 ## 4. Results layout & save scheme
@@ -137,6 +195,36 @@ Judge balancing by **`model_best`'s eval / recorded ep_len**, not the noisy raw 
 `ep_len`. At convergence `model_best` balances the full 1000‑step episode.
 
 ---
+
+## 4b. Training speed — CPU vs GPU (MJX) vs parallel‑CPU
+
+The policy is a tiny MLP; the bottleneck is **physics**, which classic MuJoCo runs on
+**CPU**. So `--device cuda` on the single‑env trainer does **not** help (the GPU can't be
+fed one step at a time). Three paths were tried, measured honestly on an **RTX 4090
+Laptop, 28‑core host**:
+
+| path | how | raw throughput | *wall‑clock to converge* |
+|---|---|---|---|
+| **CPU, 1 env** | `ppo_balance.py --device cpu` | ~850 steps/s | baseline (~30 min) |
+| **GPU / MJX** | MuJoCo‑on‑GPU (JAX), 2048+ envs | ~7,000–18,000 steps/s | **≈ same or worse** |
+| **Parallel CPU** (recommended here) | `ppo_parallel.py`, N MuJoCo envs across cores | ~2,400–4,000 steps/s (24 envs) | **~5–10× faster** |
+
+**Why MJX didn't win here, despite ~10× raw throughput:** massively‑parallel PPO (2048+
+envs) collects a huge batch every iteration but does far fewer gradient updates per
+environment‑step than a moderate‑batch setup — it trades sample‑efficiency for
+throughput. On a **laptop** GPU with this contact‑rich model, that trade is close to a
+wash: balance that reaches ep_len ~900 in ~1.3 M CPU‑equivalent samples still needed
+≫3 M samples on MJX to get partway there. On a **datacenter GPU (A100)** or a bare‑metal
+desktop 4090, physics throughput is high enough that the trade wins decisively (this is
+how MuJoCo Playground trains policies in minutes) — so the JAX/MJX stack (`mjx_env.py`,
+`mjx_nav_env.py`, `mjx_ppo.py`, `mjx_render.py`, isolated `mybot_mjx` conda env, no RL
+library — `flax`/`optax` only) is **kept as a flag for a bigger machine**, not removed.
+
+**Parallel CPU (`ppo_parallel.py`) is the win on this machine**: N independent MuJoCo
+envs run in worker processes (`vec_env.py`, plain `multiprocessing`, no RL library);
+the PPO stays exactly as sample‑efficient as the single‑env version (moderate batch,
+many gradient updates), just fed N× faster. This is what trained the Stage‑2 goal‑nav
+result above.
 
 ## 5. Key findings (hard‑won — please keep these)
 
@@ -174,17 +262,22 @@ Each stage builds on the previous policy (curriculum learning):
   x‑y drift but not yaw, so opposite wheel torques let it rotate freely). Added a
   **yaw‑rate penalty** (`−0.15·wz²`) so it station‑keeps a stable heading instead of
   circling — the first step toward goal‑driven control.
-- **S1.5 — goal‑driven station‑keeping / heading:** hold a **commanded heading and x‑y
-  position** (put the heading/position error in the observation + a tracking reward) — a
-  clean stepping stone from "don't spin" to "go where told" before adding the legs.
-- **S2 — walking:** actuate the legs (already revolute) by adding leg targets to the
-  policy's action. First a **fixed gait along a specified trajectory**, then
-  **goal‑conditioned walking to a target point** — add the goal (direction + distance) to
-  the observation and a distance‑to‑goal / velocity‑tracking reward, with wheels and legs
-  coordinated.
-- **S3 — terrain:** **climb stairs** and **walk over rough terrain** — add stairs / a
-  height‑field to the MuJoCo scene plus terrain‑aware perception (IMU + a height/heightmap
-  or depth channel) and foot‑contact reward shaping. *MuJoCo handles these load‑bearing,
+- **S2 — goal‑conditioned navigation, legs actuated:** ✅ done. Legs went from held‑at‑0
+  to a real 8‑D action (position targets); a base‑frame goal vector was added to the obs;
+  reward adds progress/velocity‑toward‑goal/face‑goal/arrival/station‑keep terms plus a
+  **posture penalty** (kills the leg‑splay shortcut a first attempt found). Trained via a
+  **2‑stage curriculum** (2a balance‑with‑legs → 2b warm‑start + goal) on parallel‑CPU
+  (`ppo_parallel.py`) — see §3/§4b. **Verified**: 9/10 held‑out episodes arrive at a
+  randomized goal and station‑keep (mean end‑distance 0.16 m from a 1.47 m start), full
+  1000‑step balance throughout.
+- **S2.5 — obstacle avoidance / dodging:** exteroceptive perception (rangefinder rays or
+  an offscreen depth camera) + a collision/proximity penalty, so the robot routes around
+  obstacles on the way to the goal instead of assuming clear flat ground.
+- **S3 — ducking + terrain:** **squat/lower the legs to pass under a low obstacle**
+  (e.g. a table) — the leg *range* deliberately kept small in S2 needs widening here, now
+  that there's a real reason to move them; **climb stairs** and **walk over rough
+  terrain** via a height‑field/procedural stairs in the MuJoCo scene, terrain‑aware
+  perception, and foot/wheel‑contact reward shaping. *MuJoCo handles these load‑bearing,
   contact‑rich dynamics realistically — the whole reason we left Gazebo Classic.*
 - **S4 — sim‑to‑real:** domain randomization (mass / friction / actuator latency) and
   switch the observation from privileged base state to **IMU‑only** (the framequat / gyro

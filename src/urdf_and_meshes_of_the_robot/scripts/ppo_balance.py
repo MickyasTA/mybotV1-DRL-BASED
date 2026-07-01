@@ -198,6 +198,12 @@ def make_env(env_name, render=False):
     if env_name == "mujoco":
         from balance_env_mujoco import MujocoBalanceEnv   # MuJoCo (realistic, actuated legs)
         return MujocoBalanceEnv(render=render)
+    if env_name == "mujoco_nav":
+        from nav_env_mujoco import GoalNavEnv             # Stage 2b: goal nav + actuated legs
+        return GoalNavEnv(render=render)
+    if env_name == "mujoco_nav_bal":
+        from nav_env_mujoco import GoalNavEnv             # Stage 2a: balance WITH actuated legs
+        return GoalNavEnv(render=render, goal_reward=False)
     import gymnasium as gym
     return gym.make(env_name, render_mode="human" if render else None)
 
@@ -555,6 +561,10 @@ def _save(agent, obs_rms, rew_norm, update, args, path, extra=None):
         "rew_norm": rew_norm.state_dict() if rew_norm is not None else None,
         "update": update,
         "args": vars(args),
+        # obs/act dims so later curriculum stages can detect a layout change and
+        # warm-start (weight-surgery) instead of failing load_state_dict.
+        "obs_dim": int(np.prod(obs_rms.mean.shape)),
+        "act_dim": int(agent.actor_logstd.shape[1]),
     }
     if extra:                       # episode/milestone state for resilient resume
         data.update(extra)
