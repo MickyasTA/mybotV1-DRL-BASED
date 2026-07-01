@@ -39,10 +39,12 @@ def _worker(remote, factory, seed):
             obs, _ = env.reset(seed=data)
             remote.send(obs)
         elif cmd == "spaces":
+            leg_scale = tuple(float(x) for x in
+                              np.atleast_1d(getattr(env, "leg_scale", 0.0)))
             remote.send((env.observation_space, env.action_space,
                          float(env.sim_dt), int(env.n_sub),
                          int(getattr(env, "_frame_dim", 0)), int(getattr(env, "k", 1)),
-                         float(getattr(env, "leg_scale", 0.0))))
+                         leg_scale))
         elif cmd == "close":
             env.close(); remote.close(); return
 

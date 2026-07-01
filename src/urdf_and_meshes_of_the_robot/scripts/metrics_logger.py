@@ -35,10 +35,30 @@ class MetricsLogger:
         self.summary_path = os.path.join(metrics_dir, f"summary_{session_id}.json")
         self.start_time = None            # stamped by caller (Date is unavailable in some envs)
         self._rows = []
-        # (re)create the CSV with a header if it doesn't exist yet (resume appends)
+        # (re)create the CSV with a header if it doesn't exist yet; if it EXISTS,
+        # reload its rows so a resumed/next curriculum stage appends to the SAME
+        # continuous record and the summary covers the whole training, not one stage.
         if not os.path.isfile(self.csv_path) or os.stat(self.csv_path).st_size == 0:
             with open(self.csv_path, "w", newline="") as f:
                 csv.writer(f).writerow(EPISODE_FIELDS)
+        else:
+            with open(self.csv_path, newline="") as f:
+                for row in csv.DictReader(f):
+                    try:
+                        self._rows.append({
+                            "episode": int(float(row["episode"])),
+                            "score": float(row["score"]),
+                            "steps": int(float(row["steps"])),
+                            "duration": float(row["duration"]),
+                            "fell": str(row["fell"]).strip().lower() in ("true", "1"),
+                            "mean_tilt_deg": float(row["mean_tilt_deg"]),
+                            "max_tilt_deg": float(row["max_tilt_deg"]),
+                            "mean_effort": float(row["mean_effort"]),
+                            "global_step": int(float(row["global_step"])),
+                            "timestamp": float(row["timestamp"]),
+                        })
+                    except (KeyError, ValueError):
+                        continue          # skip malformed rows, keep the record going
 
     def set_start_time(self, t):
         self.start_time = t

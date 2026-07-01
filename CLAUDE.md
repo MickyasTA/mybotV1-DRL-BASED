@@ -74,13 +74,25 @@ The all‑in‑one resilient launcher used during development is `~/mybot_train_
    (`TimerAction`) to avoid "Spawn service failed", but it can still race intermittently —
    the resilient wrapper retries.
 
-## Curriculum training (one continuum)
+## Curriculum training (one continuum, ONE folder)
 `scripts/train_curriculum.sh [start-stage]` runs the whole skill curriculum
-autonomously: 2a balance-with-legs → 2b goal-nav → 3a wide-leg re-balance → 3b
+autonomously: 2a balance-with-legs → 2b goal-nav → 3a wide-SQUAT-range re-balance → 3b
 obstacles+ducking → 4 stairs/terrain. Stages ADVANCE automatically when learned
 (`--advance-ep-rew/--advance-ep-len` rolling thresholds; `--total-timesteps` is only a
 safety cap) and each warm-starts from the previous `model_best.pth` (weight surgery
 when the obs grows). Portable: paths derive from the script location; set `PYTHON=`.
+
+**ALL stages record into ONE run folder** (default `training_results/curriculum1`) —
+the user explicitly wants this, never per-stage folders: one continuous per-episode
+CSV, one continuous set of graph PNGs / `_overview.png` (series persisted in
+`graphs/_series.json` and reloaded by the next stage), one TensorBoard record, and
+episode/step counters that carry across stage boundaries (resumed from the CSV, the
+source of truth). The run-dir ROOT holds the continuum `model_best/latest/final`
+(the all-knowledge models); each stage's best is snapshotted into a NAMED SUBFOLDER
+inside the run dir (`s2a_balance_legs/`, `s3b_obstacles_duck/`, ...). Ducking must be
+learned as SQUATTING (pitch/knee joints, wide 0.7 rad range), never leg-splaying (hip
+yaw/roll stay at 0.25 rad and fully posture-penalized) — verify with
+`duck_eval.py --ckpt <run>/model_best.pth`.
 
 **Hard-won finding #6 — leg-range widening breaks warm-starts.** The Stage-2 policy
 saturates ~87% of its leg commands against the [-1,1] action clip, so when `leg_scale`

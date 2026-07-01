@@ -43,9 +43,10 @@ class GoalNavEnv(MujocoBalanceEnv):
         self.n_wheel = len(WHEEL_JOINTS)          # 2
         self.n_leg = len(LEG_JOINTS)              # 8
         self.act_dim = self.n_wheel + self.n_leg  # 10
-        self.leg_scale = 0.25                      # rad; leg target = leg_scale * a_leg (around 0 stance)
-                                                   # (small so exploration jitter doesn't topple balance;
-                                                   # widen at the ducking/terrain stage where legs matter)
+        # per-joint action range (rad): leg target = leg_scale[i] * a_leg[i] around the
+        # 0 stance. Small so exploration jitter doesn't topple balance; later stages
+        # widen ONLY the squat (pitch) joints -- see ObstacleNavEnv.
+        self.leg_scale = np.full(self.n_leg, 0.25)
 
         # action: [wheelL, wheelR, 8 leg position targets], all in [-1, 1]
         self.action_space = spaces.Box(-1.0, 1.0, (self.act_dim,), np.float32)
@@ -137,7 +138,7 @@ class GoalNavEnv(MujocoBalanceEnv):
         a_leg = a[self.n_wheel:]
         for i, act in enumerate(self.leg_act):
             lo, hi = self.model.actuator_ctrlrange[act]
-            self.data.ctrl[act] = float(np.clip(self.leg_scale * a_leg[i], lo, hi))
+            self.data.ctrl[act] = float(np.clip(self.leg_scale[i] * a_leg[i], lo, hi))
 
     def step(self, action):
         action = np.asarray(action, np.float32).reshape(-1)
@@ -224,7 +225,16 @@ class ObstacleNavEnv(GoalNavEnv):
                  p_table=0.5, n_pillars=(1, 4), model_path=None):
         super().__init__(render=render, control_hz=control_hz, max_steps=max_steps,
                          seed=seed, goal_reward=True, model_path=model_path)
-        self.leg_scale = 0.7       # widen leg range: squatting needs real knee/hip bend
+        # Ducking = SQUATTING, not splaying: widen ONLY the pitch joints (Upper/knee,
+        # which fold the legs under the body and lower the base straight down); hip
+        # yaw/roll stay at the tight Stage-2 range so the lateral-splits shortcut
+        # (which also lowers the body but is unstable and not the desired behavior)
+        # remains physically capped at a ~2 cm drop -> squatting is the only way under.
+        # LEG_JOINTS order: [yaw_l, roll_l, UPPER_L, LOWER_L, yaw_r, roll_r, UPPER_R, LOWER_R]
+        self._squat_idx = (2, 3, 6, 7)
+        self.leg_scale = np.full(self.n_leg, 0.25)
+        self.leg_scale[list(self._squat_idx)] = 0.7
+        self._squat_q = [self._q[LEG_JOINTS[i]] for i in self._squat_idx]
         self.p_table = p_table
         self.n_pillars = n_pillars
 
@@ -410,8 +420,11 @@ class ObstacleNavEnv(GoalNavEnv):
         if ducking:
             h_tgt = min(self._spawn_z, h + up_clear - self.top_off - self.duck_margin)
             h_tgt = max(h_tgt, 0.30)
-            leg_dev = float(sum(self.data.qpos[self._q[j]] ** 2 for j in LEG_JOINTS))
-            reward += 0.85 * self.w_pose * leg_dev          # refund 85% of posture term
+            # refund the posture penalty ONLY for the squat (pitch) joints -- bending
+            # the knees under the table is the point. Hip yaw/roll deviation stays
+            # fully penalized, so SQUATTING (not leg-splaying) is the cheap way under.
+            squat_dev = float(sum(self.data.qpos[qi] ** 2 for qi in self._squat_q))
+            reward += 0.85 * self.w_pose * squat_dev
         reward -= self.w_height * (h - h_tgt) ** 2
         # collapsed (fell through the squat) counts as a fall
         if h < 0.25:

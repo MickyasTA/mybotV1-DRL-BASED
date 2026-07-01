@@ -83,13 +83,26 @@ def train(args):
     if mlog:
         mlog.set_start_time(time.time())
 
-    logf = open(os.path.join(run_dir, "train.log"), "w")
+    # APPEND (don't truncate): the whole curriculum shares ONE run dir, so successive
+    # stages continue the same train.log instead of erasing the previous stage's story.
+    logf = open(os.path.join(run_dir, "train.log"), "a")
 
     def log(s):
         print(s); logf.write(s + "\n"); logf.flush()
 
+    # continue the CONTINUUM counters (episodes/steps) across stage boundaries so the
+    # CSV, graphs, and numbered checkpoints form ONE continuous training record. The
+    # run dir's CSV is the source of truth (model_best may have been saved EARLIER than
+    # the last logged episode — resuming from its counters would rewind the record).
+    resume_eps, resume_step = 0, 0
+    if mlog and mlog._rows:
+        resume_eps = max(int(r["episode"]) for r in mlog._rows)
+        resume_step = max(int(r["global_step"]) for r in mlog._rows)
     if args.load and os.path.isfile(args.load):     # curriculum warm-start
         ck = torch.load(args.load, map_location=dev, weights_only=False)
+        if not resume_eps:                          # no CSV record -> ckpt counters
+            resume_eps = int(ck.get("total_episodes") or 0)
+            resume_step = int(ck.get("global_step") or 0)
         ck_obs = int(ck.get("obs_dim") or ck["model"]["actor_mean.0.weight"].shape[1])
         ck_act = int(ck.get("act_dim") or ck["model"]["actor_logstd"].shape[1])
         if (ck_obs, ck_act) == (obs_dim, act_dim):
@@ -97,18 +110,22 @@ def train(args):
             obs_rms.load_state_dict(ck["obs_rms"])
             log(f"[ppo-par] warm-started from {args.load}")
         else:
-            # if the new env amplifies leg actions (leg_scale grew, e.g. 0.25 -> 0.7
-            # for the ducking stage), rescale the loaded actor's leg-output rows and
-            # log-std so the policy commands the SAME radians as before -- otherwise
-            # the transferred balance is destroyed by 2.8x-amplified leg commands.
+            # if the new env amplifies leg actions (per-joint leg_scale grew, e.g. the
+            # squat joints 0.25 -> 0.7 for the ducking stage), rescale the loaded
+            # actor's leg-output rows and log-std PER JOINT so the policy commands the
+            # SAME radians as before -- otherwise the transferred balance is destroyed
+            # by amplified leg commands. (NB: only exact for unsaturated outputs; the
+            # clip is nonlinear, hence the dedicated re-balance stage 3a.)
             act_scale = None
-            if args.load_leg_old_scale > 0 and getattr(envs, "leg_scale", 0) > 0 \
-                    and args.load_leg_old_scale != envs.leg_scale:
-                r = args.load_leg_old_scale / envs.leg_scale
+            new_ls = np.atleast_1d(np.asarray(getattr(envs, "leg_scale", 0.0)))
+            if args.load_leg_old_scale > 0 and new_ls.size == act_dim - 2 \
+                    and np.any(new_ls != args.load_leg_old_scale):
+                r = args.load_leg_old_scale / new_ls
                 act_scale = np.ones(act_dim, np.float64)
                 act_scale[2:] = r                     # dims 0,1 = wheels (unchanged)
-                log(f"[ppo-par] rescaling leg-action outputs by {r:.3f} "
-                    f"(leg_scale {args.load_leg_old_scale} -> {envs.leg_scale})")
+                log(f"[ppo-par] rescaling leg-action outputs per joint by "
+                    f"{np.round(r, 3).tolist()} (leg_scale {args.load_leg_old_scale} "
+                    f"-> {np.round(new_ls, 3).tolist()})")
             _surgery_load(agent, obs_rms, ck, obs_dim, act_dim, ck_obs, ck_act,
                           envs.frame_dim, envs.k, log, act_scale=act_scale)
             log(f"[ppo-par] warm-started via WEIGHT SURGERY from {args.load} "
@@ -121,12 +138,19 @@ def train(args):
     ep_tilt_sum = np.zeros(N); ep_tilt_max = np.zeros(N); ep_eff_sum = np.zeros(N)
     ep_wall0 = np.full(N, time.time())
     rets, lens = deque(maxlen=200), deque(maxlen=200)
-    total_episodes, _last_ckpt_ep = 0, 0
+    total_episodes = resume_eps
+    _last_ckpt_ep = (resume_eps // max(args.checkpoint_every, 1)) * args.checkpoint_every
 
     num_updates = args.total_timesteps // B
-    best, gstep, t0 = -1e9, 0, time.time()
+    best, gstep, t0 = -1e9, resume_step, time.time()
     log(f"[ppo-par] env={args.env} envs={N} n_steps={T} batch={B} minibatch={mb} "
-        f"updates={num_updates} obs={obs_dim} act={act_dim} device={args.device}")
+        f"updates={num_updates} obs={obs_dim} act={act_dim} device={args.device}"
+        + (f"  [continuum: resuming at episode {resume_eps}, step {resume_step}]"
+           if resume_eps or resume_step else ""))
+
+    def ckpt(path):                 # checkpoint WITH the continuum counters (late-bound)
+        _save(agent, obs_rms, args, obs_dim, act_dim, path,
+              extra={"total_episodes": total_episodes, "global_step": gstep})
 
     for update in range(num_updates):
         for t in range(T):
@@ -223,7 +247,7 @@ def train(args):
 
         mret = float(np.mean(rets)) if rets else 0.0
         mlen = float(np.mean(lens)) if lens else 0.0
-        sps = gstep / (time.time() - t0)
+        sps = (gstep - resume_step) / (time.time() - t0)
         if writer:
             writer.add_scalar("charts/ep_rew_mean", mret, gstep)
             writer.add_scalar("charts/ep_len_mean", mlen, gstep)
@@ -237,18 +261,15 @@ def train(args):
                 f"ep_len {mlen:7.1f}  kl {kl:.3f}  {sps:,.0f} steps/s")
         if rets and mret > best:
             best = mret
-            _save(agent, obs_rms, args, obs_dim, act_dim,
-                  os.path.join(run_dir, "model_best.pth"))
+            ckpt(os.path.join(run_dir, "model_best.pth"))
         if update % 20 == 0:
-            _save(agent, obs_rms, args, obs_dim, act_dim,
-                  os.path.join(run_dir, "model_latest.pth"))
+            ckpt(os.path.join(run_dir, "model_latest.pth"))
             if mlog:
                 mlog.write_summary(time.time(), total_episodes)
         # decoupled numbered checkpoint every --checkpoint-every EPISODES (not updates)
         if total_episodes >= _last_ckpt_ep + args.checkpoint_every:
             _last_ckpt_ep = (total_episodes // args.checkpoint_every) * args.checkpoint_every
-            _save(agent, obs_rms, args, obs_dim, act_dim,
-                  os.path.join(run_dir, f"model_episode_{total_episodes}.pth"))
+            ckpt(os.path.join(run_dir, f"model_episode_{total_episodes}.pth"))
         # curriculum auto-advance: the stage counts as LEARNED once the rolling episode
         # metrics cross the thresholds -> finish early so the next stage starts sooner.
         # (--total-timesteps stays as the safety cap if the thresholds are never met.)
@@ -259,7 +280,7 @@ def train(args):
             log(f"[ppo-par] ADVANCE: stage learned (ep_rew {mret:.1f} / ep_len {mlen:.1f} "
                 f"crossed thresholds) at step {gstep} -- finishing early")
             break
-    _save(agent, obs_rms, args, obs_dim, act_dim, os.path.join(run_dir, "model_final.pth"))
+    ckpt(os.path.join(run_dir, "model_final.pth"))
     if mlog:
         mlog.write_summary(time.time(), total_episodes)
     if writer:
@@ -321,10 +342,13 @@ def _surgery_load(agent, obs_rms, ck, obs_dim, act_dim, ck_obs, ck_act,
     obs_rms.load_state_dict({"mean": mean, "var": var, "count": old_rms["count"]})
 
 
-def _save(agent, obs_rms, args, obs_dim, act_dim, path):
-    torch.save({"model": agent.state_dict(), "obs_rms": obs_rms.state_dict(),
-                "rew_norm": None, "args": vars(args),
-                "obs_dim": obs_dim, "act_dim": act_dim}, path)
+def _save(agent, obs_rms, args, obs_dim, act_dim, path, extra=None):
+    data = {"model": agent.state_dict(), "obs_rms": obs_rms.state_dict(),
+            "rew_norm": None, "args": vars(args),
+            "obs_dim": obs_dim, "act_dim": act_dim}
+    if extra:                       # continuum counters (episodes/steps) for the next stage
+        data.update(extra)
+    torch.save(data, path)
 
 
 if __name__ == "__main__":

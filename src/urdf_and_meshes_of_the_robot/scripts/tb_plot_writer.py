@@ -52,6 +52,17 @@ class _PlotMixin:
         self.graph_dir = graph_dir
         os.makedirs(self.graph_dir, exist_ok=True)
         self._series = defaultdict(lambda: ([], []))   # tag -> (steps, values)
+        # CONTINUITY across processes: reload the persisted series (written by render()),
+        # so successive curriculum stages EXTEND the same curves instead of starting new
+        # graphs -- one continuous training record per run dir.
+        self._series_path = os.path.join(self.graph_dir, "_series.json")
+        try:
+            import json
+            with open(self._series_path) as f:
+                for tag, (steps, vals) in json.load(f).items():
+                    self._series[tag] = (list(steps), list(vals))
+        except Exception:
+            pass
         self._lock = threading.Lock()
         self._dirty = False
         self._stop = threading.Event()
@@ -88,6 +99,14 @@ class _PlotMixin:
         data = self._snapshot()
         if not data:
             return
+        try:                        # persist for cross-stage continuity (atomic replace)
+            import json
+            tmp = self._series_path + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump(data, f)
+            os.replace(tmp, self._series_path)
+        except Exception:
+            pass
         for tag, (steps, vals) in data.items():
             fig, ax = plt.subplots(figsize=(6.4, 3.6), dpi=110)
             ax.plot(steps, vals, color="#9ecae1", lw=1.0, label="raw")
